@@ -1,0 +1,3527 @@
+---
+title: "Getting A's in B-School Markdown"
+author: "Ian Scot Nesbitt, M.A. & Markus Kemmelmeier, Ph.D."
+output: html_document
+---
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Libraries}
+library(haven)
+library(lme4)
+library(car)
+library(lmSupport)
+library(tibble)
+library(merTools)
+library(psych)
+library(lmtest)
+library(lavaan)
+library(data.table)
+library(knitr)
+library(corrplot)
+library(lm.beta)
+library(GPArotation)
+library(tidyverse)
+library(lmerTest)
+```
+
+```{r Working Directories}
+# Ian's iMac (MSS 340)
+FULL.d <- read_sav("/Users/ianscotnesbitt/Documents/ISN Data/1997-2001 Transcript Study.sav")
+dim(FULL.d)
+
+testd <- read_sav("/Users/ianscotnesbitt/Documents/ISN Data/1997-2001 Transcript Study.sav")
+dim(testd)
+
+# Markus' MacPro (MSS 344)
+#FULL.d <- read_sav("~roundmacpro/Box Sync/Ian Masters thesis/data/UMich 1997-2001 Transcript Study.sav")
+```
+
+# DATA CLEANING PART I: COURSE IDENTIFIERS
+
+```{r Initial String Manipulation}
+# Remove all spaces
+FULL.d$class.nospaces <- gsub(" ", "", FULL.d$class)
+
+# Remove all but field name and course number
+FULL.d$fieldname.coursenumber <- gsub("(\\d)[^0-9]+$", "\\1", FULL.d$class.nospaces)
+
+# Split fields and course numbers into separate columns
+FULL.d$fieldname <- gsub("[[:digit:]]","", FULL.d$fieldname.coursenumber)
+FULL.d$coursenum <- gsub("[^[:digit:]]","", FULL.d$fieldname.coursenumber)
+
+# Remove errors from course numbers by keeping only the first three numerical characters
+FULL.d$coursenum <- substring(FULL.d$coursenum, 1, 3)
+```
+
+```{r Lists of Unaltered Fields Sorted Alphabetically by First Letter 1}
+FIELDlist1 <- unique(FULL.d$fieldname)
+FIELDlist1 <- unique(tapply(FIELDlist1, toupper(substr(FIELDlist1, 1, 1)),identity))
+FIELDlist1
+```
+
+```{r Creating Field Name Variable}
+# Creating a copy of the field name variable for purposes of comparison
+FULL.d$fieldname2 <- FULL.d$fieldname
+```
+
+```{r Anthropology}
+unique(FULL.d$fieldname[grep("ANTH", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ANTH", FULL.d$fieldname2)])
+
+# Cultural Anthropology
+FULL.d$fieldname2 <-gsub("ANTHRCUL","CulturalAnthropology",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("ANTH|Anthro", FULL.d$fieldname2)])
+# Biological Anthropology
+FULL.d$fieldname2 <-gsub("ANTHRBIO","BiologicalAnthropology",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("ANTH|Anthro", FULL.d$fieldname2)])
+```
+
+```{r Architecture}
+# Architecture
+unique(FULL.d$fieldname[grep("ARCH|ARC", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ARCH|ARC", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^ARCH$","Architecture",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("ARCH|Arch", FULL.d$fieldname2)])
+
+# Classical Architecture
+unique(FULL.d$fieldname[grep("ARCH|ARC", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ARCH|ARC", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub(".*(?<=CL)ARCH.*","ClassicalArchitecture",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("ARCH|Arch", FULL.d$fieldname2)])
+
+# Naval Architecture
+unique(FULL.d$fieldname[grep("ARCH|ARC", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ARCH|ARC", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub(".*(?<=NAV)ARCH.*","NavalArchitecture",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("ARCH|Arch", FULL.d$fieldname2)])
+```
+
+```{r American Culture}
+unique(FULL.d$fieldname[grep("AMCULT|AMER|CULT", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("AMCULT|AMER|CULT", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^AMCULT$","AmericanCulture",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("AMCULT|AMER|CULT|Amer", FULL.d$fieldname2)])
+```
+
+```{r Arabic, Armenian, Persian, Turkish and Islamic Studies}
+unique(FULL.d$fieldname[grep("AAPTIS|APTIS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("AAPTIS|APTIS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub(".*APTIS.*","ArabicArmenianPersianTurkish&IslamicStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("AAPTIS|APTIS|ARABIC", FULL.d$fieldname2)])
+```
+
+```{r Aerospace}
+unique(FULL.d$fieldname[grep("AERO", FULL.d$fieldname)])
+FULL.d$fieldname2 <-gsub("AERO.*","Aerospace",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("AERO", FULL.d$fieldname2)])
+```
+
+```{r Accounting}
+unique(FULL.d$fieldname[grep("ACC", FULL.d$fieldname)])
+FULL.d$fieldname2 <-gsub("ACC(?!EL).*","Accounting",FULL.d$fieldname2, perl=TRUE)
+unique(FULL.d$fieldname2[grep("ACC", FULL.d$fieldname2)])
+```
+
+```{r Afro-American Studies}
+unique(FULL.d$fieldname[grep("AFRO|CAAS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("AFRO|CAAS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("AFRO.*|CAAS.*","AfroAmericanStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("AFRO|CAAS|Afro", FULL.d$fieldname2)])
+```
+
+```{r Anatomy}
+unique(FULL.d$fieldname[grep("ANAT", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ANAT", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^ANAT$","Anatomy",FULL.d$fieldname2, perl = TRUE) 
+unique(FULL.d$fieldname2[grep("ANAT|Anat", FULL.d$fieldname2)])
+```
+
+```{r Armenian}
+unique(FULL.d$fieldname[grep("ARMENIAN", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ARMENIAN", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("ARMENIAN(?!P).*","Armenian",FULL.d$fieldname2, perl = TRUE) 
+unique(FULL.d$fieldname2[grep("Armenian", FULL.d$fieldname2)])
+```
+
+```{r Art}
+unique(FULL.d$fieldname[grep("ART", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ART", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("ART&.*|ARTDES.*|ARTS-.*|ARTS.*","Art",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("Art", FULL.d$fieldname2)])
+```
+
+```{r Ancient Civilizations and Biblical Studies}
+unique(FULL.d$fieldname[grep("ACABS|ANC|BIB|CIV", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ACABS|ANC|BIB|CIV", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^ACABS$","AncientCivilizations&BiblicalStudies",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("ACABS|ANC|BIB|CIV|Bib", FULL.d$fieldname2)])
+```
+
+```{r Asian}
+unique(FULL.d$fieldname[grep("ASIA", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ASIA", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^ASIA(?!H).*","Asian",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("ASIA|Asia", FULL.d$fieldname2)])
+```
+
+```{r Astronomy}
+unique(FULL.d$fieldname[grep("ASTR", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ASTR", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("ASTR.*","Astronomy",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("Astr", FULL.d$fieldname2)])
+```
+
+```{r Athletic Training}
+unique(FULL.d$fieldname[grep("AT", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("AT", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^AT$","AthleticTraining",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("AT|Ath", FULL.d$fieldname2)])
+```
+
+```{r Atmospheric Oceanic and Space Science}
+unique(FULL.d$fieldname[grep("AOSS|AO&SS|A&OS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("AOSS|AO&SS|A&OS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("AOSS|AO&SS|A&OS","AtmosphericOceanic&SpaceScience",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("AOSS|AO&SS|A&OS|Atmos", FULL.d$fieldname2)])
+```
+
+```{r Bassoon}
+unique(FULL.d$fieldname[grep("BASS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("BASS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^BASSOON$","Bassoon",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("BASS|Bass", FULL.d$fieldname2)])
+```
+
+```{r Biology, Biological Chemistry, Biological Physics, and Microbiology}
+# Biology 
+unique(FULL.d$fieldname[grep("BIOL", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("BIOL", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("BIOLOGY.*|BIOL(?!C)","Biology",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("BIOL|Biol", FULL.d$fieldname2)])
+
+# Biological Anthropology
+unique(FULL.d$fieldname[grep("ANTH|BIO|BIOL", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ANTH|BIO|BIOL", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("ANTHRBIO","BiologicalAnthropology",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("ANTH|BIO|BIOL", FULL.d$fieldname2)])
+
+# Biological Chemistry
+unique(FULL.d$fieldname[grep("BIO|BIOL|CHEM", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("BIO|BIOL|CHEM", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("BIOLCHEM","BiologicalChemistry",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("BIOL|Biol", FULL.d$fieldname2)])
+
+# Biological Physics
+unique(FULL.d$fieldname[grep("BIOL|Biol|BIOPHYS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("BIOL|Biol|BIOPHYS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("BIOPHYS.*","BiologicalPhysics",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("BIOL|Biol|BIOPHYS", FULL.d$fieldname2)])
+
+# Biological Statistics
+unique(FULL.d$fieldname[grep("BIOL|Biol|BIOSTAT", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("BIOL|Biol|BIOSTAT", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("BIOSTAT.*","BiologicalStatistics",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("BIOL|Biol|BIOSTAT|BiologicalStatistics", FULL.d$fieldname2)])
+
+# Microbiology
+unique(FULL.d$fieldname2[grep("BIOL|Biol", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("MICR(?=Biology)|MICRO(?=Biology)","Micro",FULL.d$fieldname2, perl = TRUE)
+FULL.d$fieldname2 <-gsub("MicroBiology.*","Microbiology",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MICRO|BIO|BIOL|Biol|biol", FULL.d$fieldname2)])
+```
+
+```{r Buddhist Studies}
+unique(FULL.d$fieldname[grep("BUD", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("BUD", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("BUD.*","BuddhistStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("BUD|Bud", FULL.d$fieldname2)])
+```
+
+```{r Business}
+# Business Administration
+unique(FULL.d$fieldname[grep("BUS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("BUS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub(".*(?<=BUS)ADM|^BA$","BusinessAdministration",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("ADM|BUS|Adm|Bus", FULL.d$fieldname2)])
+
+# Business Economics
+FULL.d$fieldname2 <-gsub("BUSECON","BusinessEconomics", FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("ECON|Econ", FULL.d$fieldname2)])
+
+# International Business
+unique(FULL.d$fieldname2[grep("INTL", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("INTLBUS","InternationalBusiness", FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("INTL|Inter", FULL.d$fieldname2)])
+```
+
+```{r Business Entrepreneurship}
+unique(FULL.d$fieldname[grep("BE|BUS|ENTRE", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("BE|BUS|ENTRE", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^BE$","BusinessEntrepreneurship",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("BE|BUS|ENTRE|Bus", FULL.d$fieldname2)])
+```
+
+```{r Carillon}
+unique(FULL.d$fieldname[grep("CARILLON", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CARILLON", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^CARILLON$","Carillon",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CARILLON|Carillon", FULL.d$fieldname2)])
+```
+
+```{r Chemistry}
+#Chemistry
+unique(FULL.d$fieldname[grep("CHEM|MEDC|BIOLC", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CHEM|MEDC|BIOLC", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("CHEM.*","Chemistry",FULL.d$fieldname2)
+
+#Medical Chemistry
+FULL.d$fieldname2 <-gsub("MEDC.*","MedicalChemistry",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CHEM|Chem", FULL.d$fieldname2)])
+```
+
+```{r Cello}
+unique(FULL.d$fieldname[grep("CE|CELLO", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CE|CELLO", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("CELLO","Cello",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CE|CELLO|Cello", FULL.d$fieldname2)])
+```
+
+```{r Children and Youth}
+unique(FULL.d$fieldname[grep("CHLDY", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CHLDY", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^CHLDY$","Children&Youth",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CHLDY|Children", FULL.d$fieldname2)])
+```
+
+```{r Chinese}
+unique(FULL.d$fieldname[grep("CHIN", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CHIN", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^CHIN$","Chinese",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CHIN|Chin", FULL.d$fieldname2)])
+```
+
+```{r Classical Civilization}
+unique(FULL.d$fieldname[grep("CLCIV|CLCIVILZ", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CLCIV|CLCIVILZ", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^CLCIV.*","ClassicalCivilization",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CLCIV|Classic", FULL.d$fieldname2)])
+```
+
+```{r Corporate Strategy}
+unique(FULL.d$fieldname[grep("CORPSTRT|CSIB", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CORPSTRT|CSIB", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("CORPSTRT|CSIB","CorporateStrategy",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CORPSTRT|CSIB|Corp", FULL.d$fieldname2)])
+```
+
+```{r Clarinet}
+unique(FULL.d$fieldname[grep("CL|Clarinet", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CL|Clarinet", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("CLARINET","Clarinet",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CL|Clarinet", FULL.d$fieldname2)])
+```
+
+```{r Communication}
+unique(FULL.d$fieldname[grep("COMM", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("COMM", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^COMM.*","Communication",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("COMM|Comm", FULL.d$fieldname2)])
+```
+
+```{r Complex Systems}
+unique(FULL.d$fieldname[grep("COMP|CMP|SYS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("COMP|CMP|SYS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("CMPLXSYS","ComplexSystems",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("COMP|CMP|SYS|Comp|Sys", FULL.d$fieldname2)])
+```
+
+```{r Comprehensive Studies Program}
+unique(FULL.d$fieldname[grep("CSP|COSTDPR", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CSP|COSTDPR", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^CSP$|^COSTDPR$","ComprehensiveStudiesProgram",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CSP|Compre", FULL.d$fieldname2)])
+```
+
+```{r Computer Information Systems}
+unique(FULL.d$fieldname[grep("CMP|CIS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CMP|CIS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^CMPTI.*|^CIS$","ComputerInformationSystems",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CMP|CIS|Comp", FULL.d$fieldname2)])
+```
+
+```{r Computer Science}
+unique(FULL.d$fieldname[grep("CMP", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CMP", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^CMPTR.*","ComputerScience",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CMP|Comp", FULL.d$fieldname2)])
+```
+
+```{r Conducting}
+unique(FULL.d$fieldname[grep("CONDUCT", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CONDUCT", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^CONDUCT$","Conducting",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CONDUCT|Conduct", FULL.d$fieldname2)])
+```
+
+```{r Czech}
+unique(FULL.d$fieldname[grep("CZECH", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("CZECH", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^CZECH$","Czech",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CZECH|Czech", FULL.d$fieldname2)])
+```
+
+```{r Dental}
+unique(FULL.d$fieldname[grep("DENT", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("DENT", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^DENT.*","Dental",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("DENT|Dent", FULL.d$fieldname2)])
+```
+
+```{r Economics}
+unique(FULL.d$fieldname[grep("ECON", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ECON", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("ECON","Economics",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("Econ", FULL.d$fieldname2)])
+```
+
+```{r Engineering}
+#Biomedical Engineering
+unique(FULL.d$fieldname2[grep("BIOMEDE", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("BIOMEDE","BiomedicalEngineering",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("BIOMED", FULL.d$fieldname2)])
+
+# Civil and Environmental Engineering
+unique(FULL.d$fieldname2[grep("CEE|CIV|ENV", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("CEE","Civil&EnvironmentalEngineering",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CIV", FULL.d$fieldname2)])
+
+# Chemical Engineering
+unique(FULL.d$fieldname2[grep("CHE|CHEM", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^CHE$","ChemicalEngineering",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("CHE|CHEM", FULL.d$fieldname2)])
+
+# Electrical Engineering and Computer Science
+unique(FULL.d$fieldname2[grep("EECS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("EECS","ElectricalEngineering",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("EECS", FULL.d$fieldname2)])
+
+# Engineering 
+unique(FULL.d$fieldname2[grep("ENG", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub(".*ENGR.*","Engineering",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("ENGR|ENGIN", FULL.d$fieldname2)])
+
+# Industrial and Operations Engineering
+unique(FULL.d$fieldname2[grep("IOE|I&OE", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("IOE|I&OE","Industrial&OperationsEngineering",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("IOE|I&OE", FULL.d$fieldname2)])
+
+# Mechanical Engineering
+unique(FULL.d$fieldname2[grep("MECH|ME", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("MECHENG","MechanicalEngineering",FULL.d$fieldname2)
+FULL.d$fieldname2 <-gsub("^ME$","MechanicalEngineering",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MECH|ME", FULL.d$fieldname2)])
+
+# Nuclear Engineering
+unique(FULL.d$fieldname[grep("NERS|NE&RS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("NERS|NE&RS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^NERS$|^NE&RS$","NuclearEngineering&RadiologicalSciences",FULL.d$fieldname2)
+FULL.d$fieldname2 <-gsub("^ME$","MechanicalEngineering",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("NERS|NE&RS|Nuclear", FULL.d$fieldname2)])
+```
+
+```{r Dance}
+unique(FULL.d$fieldname[grep("DANCE", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("DANCE", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^DANCE$","Dance",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("DANCE|Dance", FULL.d$fieldname2)])
+```
+
+```{r Double Bass}
+unique(FULL.d$fieldname[grep("DOUBBASS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("DOUBBASS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^DOUBBASS$","DoubleBass",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("DOUBBASS|DoubleBass", FULL.d$fieldname2)])
+```
+
+```{r Dutch}
+unique(FULL.d$fieldname[grep("DUTCH", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("DUTCH", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^DUTCH$","Dutch",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("DUTCH|Dutch", FULL.d$fieldname2)])
+```
+
+```{r Education}
+unique(FULL.d$fieldname[grep("ED|EDUC|EDCUR", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ED|EDUC|EDCUR", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^ED$|^EDUC$|^EDCURINS$","Education",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("ED|EDUC|EDCURINS", FULL.d$fieldname2)])
+```
+
+```{r English}
+unique(FULL.d$fieldname[grep("COMP|ENG|ENGL", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("COMP|ENG|ENGL", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^ENGL.*|^ENGC.*|^COMP.*","EnglishLiterature&Composition",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("COMP|ENG|ENGL|ENG|Eng", FULL.d$fieldname2)])
+```
+
+```{r English Composition Board}
+unique(FULL.d$fieldname[grep("ECB", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ECB", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^ECB$","EnglishCompositionBoard",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("ECB|Eng", FULL.d$fieldname2)])
+```
+
+```{r Ensemble}
+unique(FULL.d$fieldname[grep("ENS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ENS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^ENS$","Ensemble",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("ENS|Ensemble", FULL.d$fieldname2)])
+```
+
+```{r Entrepreneurial Studies}
+unique(FULL.d$fieldname[grep("ES", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ES", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^ES$","EntrepreneurialStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("ES|Entre", FULL.d$fieldname2)])
+```
+
+```{r Environmental and Industrial Health}
+unique(FULL.d$fieldname[grep("EIHLTH", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("EIHLTH", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^EIHLTH$","EnvironmentalIndustrialHealth",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("EIHLTH|Enviro", FULL.d$fieldname2)])
+```
+
+```{r Environmental Studies}
+unique(FULL.d$fieldname[grep("ENVRNSTD", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ENVRNSTD", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^ENVRNSTD$","EnvironmentalStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("ENVRNSTD|Enviro", FULL.d$fieldname2)])
+```
+
+```{r Epidemiology}
+unique(FULL.d$fieldname[grep("EPID", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("EPID", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^EPID$","Epidemiology",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("EPID|Epid", FULL.d$fieldname2)])
+```
+
+```{r Euphonium/Baritone}
+unique(FULL.d$fieldname[grep("EUPH", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("EUPH", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^EUPHBARI$|^EUPH-BARI$","EuphoniumBaritone",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("EUPH", FULL.d$fieldname2)])
+```
+
+```{r Film}
+unique(FULL.d$fieldname2[grep("FILM", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("FILM.*","Film",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("FILM", FULL.d$fieldname2)])
+```
+
+```{r Finance}
+unique(FULL.d$fieldname2[grep("FIN", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("FIN.*","Finance",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("FIN", FULL.d$fieldname2)])
+```
+
+```{r Flute}
+unique(FULL.d$fieldname[grep("FLUTE", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("FLUTE", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^FLUTE$","Flute",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("FLUTE|Flute", FULL.d$fieldname2)])
+```
+
+```{r French}
+unique(FULL.d$fieldname[grep("FRENCH", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("FRENCH", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("FRENCH.*","French",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("FRENCH", FULL.d$fieldname2)])
+```
+
+```{r French Horn}
+unique(FULL.d$fieldname[grep("FREN", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("FREN", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("FRENH.*","FrenchHorn",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("FREN", FULL.d$fieldname2)])
+```
+
+```{r Geography}
+unique(FULL.d$fieldname[grep("GEOG", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("GEOG", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^GEOG$","Geography",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("GEOG|Geo", FULL.d$fieldname2)])
+```
+
+```{r Geological Sciences}
+unique(FULL.d$fieldname[grep("GEO|GEOL", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("GEO|GEOL", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^GEO(?!G).*","GeologicalScience",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("GEO|Geo", FULL.d$fieldname2)])
+```
+
+```{r German}
+unique(FULL.d$fieldname[grep("GER", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("GER", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^GER|GERM.*|GERG.*|GER-.*|GERA.*","German",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("GER", FULL.d$fieldname2)])
+```
+
+```{r Great Books}
+unique(FULL.d$fieldname[grep("GTBOOKS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("GTBOOKS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^GTBOOKS$","GreatBooks",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("GTBOOKS|Great", FULL.d$fieldname2)])
+```
+
+```{r Greek}
+unique(FULL.d$fieldname[grep("GREEK", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("GREEK", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub(".*GREEK.*","Greek",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("GREEK|Greek", FULL.d$fieldname2)])
+```
+
+```{r Guitar}
+unique(FULL.d$fieldname[grep("GUITAR", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("GUITAR", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^GUITAR$","Guitar",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("GUITAR|Guitar", FULL.d$fieldname2)])
+```
+
+```{r Harp}
+unique(FULL.d$fieldname[grep("HARP", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("HARP", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^HARP(?!S)","Harp",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("HARP|Harp", FULL.d$fieldname2)])
+```
+
+```{r Harpsichord}
+unique(FULL.d$fieldname[grep("HARP", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("HARP", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^HARP(?=SCHRD).*","Harpsichord",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("HARP|Harp", FULL.d$fieldname2)])
+```
+
+```{r Health Behavior and Health Education}
+unique(FULL.d$fieldname[grep("HEALTH|HBEHED", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("HEALTH|HBEHED", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^HBEHED$","HealthBehavior&HealthEducation",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("HEALTH|HBEHED|Health", FULL.d$fieldname2)])
+```
+
+```{r Health Management and Policy}
+unique(FULL.d$fieldname[grep("HEALTH|HMP|HM&P", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("HEALTH|HMP|HM&P", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^HMP$|^HM&P$","HealthManagement&Policy",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("HEALTH|HMP|HM&P|Health", FULL.d$fieldname2)])
+```
+
+```{r Hebrew and Jewish Cultural Studies}
+unique(FULL.d$fieldname[grep("HJCS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("HJCS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^HJCS$","Hebrew&JewishCulturalStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("HJCS|Hebrew", FULL.d$fieldname2)])
+```
+
+```{r History}
+unique(FULL.d$fieldname[grep("HIST", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("HIST", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^HIST.*","History",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("HIST|History", FULL.d$fieldname2)])
+```
+
+```{r Honors}
+unique(FULL.d$fieldname[grep("HONOR", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("HONOR", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^HONORS$","Honors",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("HONOR|Honor", FULL.d$fieldname2)])
+```
+
+```{r Human Behavior}
+unique(FULL.d$fieldname[grep("HUM|BEH|HUMBEH|HB", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("HUM|BEH|HUMBEH|HB", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^HUMBEHAV$|^HB$","HumanBehavior",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("HUM|BEH|HUMBEH|HB|Human", FULL.d$fieldname2)])
+```
+
+```{r Human Genetics}
+unique(FULL.d$fieldname[grep("HUM|GEN|HUMGEN", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("HUM|GEN|HUMGEN", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^HUMGEN$","HumanGenetics",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("HUM|GEN|HUMGEN|Human", FULL.d$fieldname2)])
+```
+
+```{r Institute for the Humanities}
+unique(FULL.d$fieldname[grep("INSTHUM|INST|HUM", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("INSTHUM|INST|HUM", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("INSTHUM","Humanities",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("INSTHUM|INST|HUM|Hum", FULL.d$fieldname2)])
+```
+
+```{r Information Studies}
+unique(FULL.d$fieldname[grep("INFO|SI", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("INFO|SI", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^SI$","InformationStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("SI|Inf", FULL.d$fieldname2)])
+```
+
+```{r Italian}
+unique(FULL.d$fieldname2[grep("ITAL", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("ITAL.*","Italian",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("ITAL", FULL.d$fieldname2)])
+```
+
+```{r Integrated PreMed-Med Program}
+unique(FULL.d$fieldname[grep("INFL|INTE|INTM", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("INFL|INTE|INTM", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^INFLXMED$|^INTEFLEX$|^INTMED$","IntegratedPremedical",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("INFL|INTE|INTM|Premed", FULL.d$fieldname2)])
+```
+
+```{r Japanese}
+unique(FULL.d$fieldname[grep("JAP|JPN", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("JAP|JPN", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("JPN|^JAPANESE$","Japanese",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("JAP|JPN|Jap", FULL.d$fieldname2)])
+```
+
+```{r Jazz}
+unique(FULL.d$fieldname2[grep("JAZZ", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^JAZZ.*","Jazz",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("JAZZ", FULL.d$fieldname2)])
+```
+
+```{r Judaic Studies}
+unique(FULL.d$fieldname2[grep("JUD", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("JUD.*","JudaicStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("JUD", FULL.d$fieldname2)])
+```
+
+```{r Kinesiology}
+unique(FULL.d$fieldname[grep("KINESLGY", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("KINESLGY", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^KINESLGY$","Kinesiology",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("KINES|Kinesiology", FULL.d$fieldname2)])
+```
+
+```{r Korean}
+unique(FULL.d$fieldname[grep("KOREA|KOREAN", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("KOREA|KOREAN", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^KOREAN$","Korean",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("KOREAN|Korean", FULL.d$fieldname2)])
+```
+
+```{r Latin}
+unique(FULL.d$fieldname[grep("LATIN", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("LATIN", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^LATIN$","Latin",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("LATIN|Latin", FULL.d$fieldname2)])
+```
+
+```{r Latin American and Carribean Studies}
+unique(FULL.d$fieldname[grep("LACS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("LACS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^LACS$","LatinAmerican&CaribbeanStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("LATIN|Latin", FULL.d$fieldname2)])
+```
+
+```{r Law}
+unique(FULL.d$fieldname[grep("LAW", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("LAW", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^LAW$","Law",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("LAW|Law", FULL.d$fieldname2)])
+```
+
+```{r Law, History, and Communications}
+unique(FULL.d$fieldname[grep("LHC|LH&C", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("LHC|LH&C", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^LHC$|^LH&C$", "LawHistory&Communications",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("LHC|LH&C|Law", FULL.d$fieldname2)])
+```
+
+```{r Linguistics}
+unique(FULL.d$fieldname[grep("LING", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("LING", FULL.d$fieldname2)])
+
+# General Linguistics
+FULL.d$fieldname2 <-gsub("(?<!ROM)LING$","Linguistics",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("LING|Ling", FULL.d$fieldname2)])
+
+# Romance Linguistics
+FULL.d$fieldname2 <-gsub(".*(?<=ROM)LING$","RomanceLinguistics",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("LING|Ling", FULL.d$fieldname2)])
+```
+
+```{r Lloyd Hall Scholars Program}
+unique(FULL.d$fieldname[grep("LHSP", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("LHSP", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^LHSP$","LloydHallScholarsProgram",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("LHSP|Ll", FULL.d$fieldname2)])
+```
+
+```{r Manufacturing}
+unique(FULL.d$fieldname[grep("MAN|MFG", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MAN|MFG", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^MFG$","Manufacturing",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MAN|MFG|Man", FULL.d$fieldname2)])
+```
+
+```{r Marketing}
+unique(FULL.d$fieldname[grep("MKT", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MKT", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^MKT.*","Marketing",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MKT|Mark", FULL.d$fieldname2)])
+```
+
+```{r Material Science}
+unique(FULL.d$fieldname[grep("MAT", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MAT", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^MATSCI.*","MaterialScience",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MAT|Mat", FULL.d$fieldname2)])
+```
+
+```{r Mathematics}
+unique(FULL.d$fieldname[grep("MATH", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MATH", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("MATH.*","Mathematics",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MATH|Math", FULL.d$fieldname2)])
+```
+
+```{r Medical School Administration}
+unique(FULL.d$fieldname[grep("MEDADM", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MEDADM", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^MEDADM$","MedicalSchoolAdministration",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MEDADM|Med", FULL.d$fieldname2)])
+```
+
+```{r Medieval and Renaissance Studies}
+unique(FULL.d$fieldname[grep("MARC|MED|REN", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MARC|MED|REN", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^MARC$|^MED&REN$","Medieval&RenaissanceStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MARC|MED|REN|Mediev", FULL.d$fieldname2)])
+```
+
+```{r Medieval and Early Modern Studies}
+unique(FULL.d$fieldname[grep("MEMS|MED|MOD", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MEMS|MED|MOD", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^MEMS$","Medieval&EarlyModernStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MEMS|MED|MOD|Mediev", FULL.d$fieldname2)])
+```
+
+```{r Middle Eastern and North African Studies}
+unique(FULL.d$fieldname[grep("MID|EAST|AFR", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MID|EAST|AFR", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^MIDNAFR$","MiddleEastern&NorthAfricanStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MID|EAST|AFR|Mid", FULL.d$fieldname2)])
+```
+
+```{r Military Science}
+unique(FULL.d$fieldname[grep("MILSCI", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MILSCI", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("MILSCI.*","MilitaryScience",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MILSCI|Mil", FULL.d$fieldname2)])
+```
+
+```{r Movement Science}
+unique(FULL.d$fieldname[grep("MOVE", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MOVE", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^MOVE(?=SCI).*","MovementScience",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("MOVE|Move", FULL.d$fieldname2)])
+```
+
+```{r Museum Methods}
+unique(FULL.d$fieldname[grep("MUSEUM|MUS|METH", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MUSEUM|MUS|METH", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^MUSMETH$","MuseumMethods",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MUSEUM|MUS|METH|Museum", FULL.d$fieldname2)])
+```
+
+```{r Musical Education}
+unique(FULL.d$fieldname[grep("MUS|MUSED|EDD", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MUS|MUSED", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^MUSED$|^EDD$","MusicalEducation",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MUS|MUSED|MusicalE", FULL.d$fieldname2)])
+```
+
+```{r Musical Performance}
+unique(FULL.d$fieldname[grep("MUSPERF", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MUSPERF", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^MUSPERF$","MusicalPerformance",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MUSPERF|MusicalP", FULL.d$fieldname2)])
+```
+
+```{r Musicology}
+unique(FULL.d$fieldname[grep("MUSICO|MUSCOL", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MUS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^MUSICOL.*|.*MUSCOL.*","Musicology",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MUSICO|MUSCOL|Music", FULL.d$fieldname2)])
+```
+
+```{r Music Theory}
+unique(FULL.d$fieldname[grep("THEORY", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("THEORY", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^THEORY.*","MusicTheory",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("THEORY|Theory", FULL.d$fieldname2)])
+```
+
+```{r Natural Resources and Environment}
+unique(FULL.d$fieldname[grep("NRE", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("NRE", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^NRE$","NaturalResources&Environment",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("NRE|Natural", FULL.d$fieldname2)])
+```
+
+```{r Naval Science}
+unique(FULL.d$fieldname[grep("NAV|NAVSCI", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("NAV|NAVSCI", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^NAVSCI$","NavalScience",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("NAV|Nav", FULL.d$fieldname2)])
+```
+
+```{r Nursing}
+unique(FULL.d$fieldname[grep("NURS|NRS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("NURS|NRS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^NURS$","Nursing",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("NURS|Nursing", FULL.d$fieldname2)])
+```
+
+```{r Oboe}
+unique(FULL.d$fieldname[grep("OB", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("OB", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^OBOE$","Oboe",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("OB|Ob", FULL.d$fieldname2)])
+```
+
+```{r Obstetrics and Gynecology}
+unique(FULL.d$fieldname[grep("OB", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("OB", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("OB(?=STGYN).*","Obstetrics&Gynecology",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("OB|Ob", FULL.d$fieldname2)])
+```
+
+```{r Operations Management}
+unique(FULL.d$fieldname[grep("OPER|OM", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("OPER|OM", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^OPER(?=MGT).*|^OM$","OperationsManagement",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("OPER|Oper", FULL.d$fieldname2)])
+```
+
+```{r Opera}
+unique(FULL.d$fieldname[grep("OPER", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("OPER", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^OPERA$","Opera",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("OPER|Oper", FULL.d$fieldname2)])
+```
+
+```{r Organ}
+unique(FULL.d$fieldname[grep("ORG", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("ORG", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^ORGAN$","Organ",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("ORG|Org", FULL.d$fieldname2)])
+```
+
+```{r Organizational Behavior and Human Resources Management}
+unique(FULL.d$fieldname[grep("OB", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("OB", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^OB$|OB(?=-HRM).*","OrganizationalBehavior&HumanResourcesManagement",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("OB|Org", FULL.d$fieldname2)])
+```
+
+```{r Pathology}
+unique(FULL.d$fieldname[grep("PATH", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PATH", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^PATH$","Pathology",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PATH|Pat", FULL.d$fieldname2)])
+```
+
+```{r Pediatrics}
+unique(FULL.d$fieldname[grep("PED", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PED", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^PEDIAT$","Pediatrics",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PED|Ped", FULL.d$fieldname2)])
+```
+
+```{r Percussion}
+unique(FULL.d$fieldname[grep("PERC", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PERC", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("PERCUSS","Percussion",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PERC|Perc", FULL.d$fieldname2)])
+```
+
+```{r Performing Arts Technology}
+unique(FULL.d$fieldname[grep("PAT", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PAT", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^PAT$","PerformingArtsTechnology",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PAT|Pat", FULL.d$fieldname2)])
+```
+
+```{r Pharmacy, Pharmacology}
+unique(FULL.d$fieldname[grep("PHR|PHAR", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PHR|PHAR", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^PHR.*|^PHAR.*","Pharmacy",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PHR|PHAR|Phar", FULL.d$fieldname2)])
+```
+
+```{r Pharmacology}
+unique(FULL.d$fieldname[grep("PHR|PHAR", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PHR|PHAR", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("PHARMACOL|PHRMACOL","Pharmacology", FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PHR|PHAR|Phar", FULL.d$fieldname2)])
+```
+
+```{r Philosophy}
+unique(FULL.d$fieldname[grep("PHIL", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PHIL", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^PHIL.*","Philosophy",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PHIL|Phil", FULL.d$fieldname2)])
+```
+
+```{r Physical Education}
+unique(FULL.d$fieldname[grep("PHYS|PHYSED", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PHYS|PHYSED", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^PHYSED.*","PhysicalEducation",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PHYSED|Phys", FULL.d$fieldname2)])
+```
+
+```{r Physics}
+# Physics
+unique(FULL.d$fieldname[grep("PHYS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PHYS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^PHYS(?!IO|E|K).*","Physics",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("PHYS|Phys", FULL.d$fieldname2)])
+
+# Physics Keller Tutor
+unique(FULL.d$fieldname[grep("KELLER", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("KELLER", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub(".*KELLER.*","PhysicsKellerTutor",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PHYS|Phys", FULL.d$fieldname2)])
+```
+
+```{r Physiology}
+unique(FULL.d$fieldname[grep("PHYS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PHYS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^PHYSIOL$","Physiology",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PHYS|Phys", FULL.d$fieldname2)])
+```
+
+```{r Piano}
+unique(FULL.d$fieldname[grep("PIANO", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PIANO", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^PIANO$","Piano",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PIANO|Piano", FULL.d$fieldname2)])
+```
+
+```{r Piano Literature and Pedagogy}
+unique(FULL.d$fieldname[grep("PNO", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PNO", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^PNOLITPED$","PianoLiterature&Pedagogy",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PNO|Piano", FULL.d$fieldname2)])
+```
+
+```{r Polish}
+unique(FULL.d$fieldname[grep("POL", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("POL", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^POLISH$","Polish",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("POL|Pol", FULL.d$fieldname2)])
+```
+
+```{r Political Science}
+unique(FULL.d$fieldname[grep("POL", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("POL", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^POLSCI$","PoliticalScience",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("POL|Pol", FULL.d$fieldname2)])
+```
+
+```{r Portuguese}
+unique(FULL.d$fieldname[grep("PORTUG", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PORTUG", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("PORTUG.*","Portuguese",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PORTUG", FULL.d$fieldname2)])
+```
+
+```{r Psychology}
+unique(FULL.d$fieldname[grep("PSYCH|PYSCH", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PSYCH|PYSCH", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^PSYCH$|^PYSCH$","Psychology", FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("PSYCH|PYSCH|Psych", FULL.d$fieldname2)])
+```
+
+```{r Public Policy}
+unique(FULL.d$fieldname[grep("PUB|POL", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("PUB|POL", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^PUBPOL$","PublicPolicy",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("POL|Pol", FULL.d$fieldname2)])
+```
+
+```{r Rackham (Graduate School)}
+unique(FULL.d$fieldname[grep("RACKHAM", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("RACKHAM", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^RACKHAM$","Rackham",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("RACKHAM|Rack", FULL.d$fieldname2)])
+```
+
+```{r Religion}
+unique(FULL.d$fieldname[grep("RELI", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("RELI", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^RELIGION.*","Religion",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("RELI|Reli", FULL.d$fieldname2)])
+```
+
+```{r Residential College Classes}
+unique(FULL.d$fieldname[grep("^RC", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("^RC", FULL.d$fieldname2)])
+
+# Residential College Core
+FULL.d$fieldname2 <-gsub("^RCArt$","ResidentialCollegeArt",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("RCCORE|ResidentialCollegeArt", FULL.d$fieldname2)])
+
+# Residential College Core
+FULL.d$fieldname2 <-gsub("^RCCORE.*","ResidentialCollegeCore",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("RCCORE|ResidentialCollegeCore", FULL.d$fieldname2)])
+
+# Residential College Humanities
+FULL.d$fieldname2 <-gsub("^RCHUMS.*","ResidentialCollegeHumanities",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("RCHUMS|ResidentialCollegeHum", FULL.d$fieldname2)])
+
+# Residential College Information Sciences
+FULL.d$fieldname2 <-gsub("^RCISCI$","ResidentialCollegeInformationSciences",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("RCNSCI|ResidentialCollegeInf", FULL.d$fieldname2)])
+
+# Residential College Interdivisional
+FULL.d$fieldname2 <-gsub("^RCIDIV$","ResidentialCollegeInterDivisional",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("RCIDIV|ResidentialCollegeInt", FULL.d$fieldname2)])
+
+# Residential College Natural Sciences
+FULL.d$fieldname2 <-gsub("^RCNSCI.*","ResidentialCollegeNaturalSciences",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("RCNSCI|ResidentialCollegeNat", FULL.d$fieldname2)])
+
+# Residential College Social Sciences
+FULL.d$fieldname2 <-gsub("^RCSSCI.*","ResidentialCollegeSocialSciences",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("RCSSCI|ResidentialCollegeSoc", FULL.d$fieldname2)])
+```
+
+```{r Russian}
+unique(FULL.d$fieldname[grep("RUSS", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("RUSS", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("RUSS.*","Russian",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("Russ", FULL.d$fieldname2)])
+```
+
+```{r Russian and Eastern European Studies}
+unique(FULL.d$fieldname[grep("RUS|REES", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("RUS|REES", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("RUSEEUR|REES","Russian&EasternEuropeanStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("RUS|REES|Russian", FULL.d$fieldname2)])
+```
+
+```{r Saxophone}
+unique(FULL.d$fieldname[grep("SAX", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("SAX", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("SAX.*","Saxophone",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("SAX|Sax", FULL.d$fieldname2)])
+```
+
+```{r Scandinavian}
+unique(FULL.d$fieldname[grep("SCAND", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("SCAND", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^SCAND$","Scandinavian",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("SCAND|Scand", FULL.d$fieldname2)])
+```
+
+```{r SerboCroatian}
+unique(FULL.d$fieldname[grep("SERB|CRO", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("SERB|CRO", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^SERBOCRO$","SerboCroatian",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("SERB|CRO|Serb", FULL.d$fieldname2)])
+```
+
+```{r Slavic}
+unique(FULL.d$fieldname[grep("SLAV", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("SLAV", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("SLAV.*","Slavic",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("SLAV|Slav", FULL.d$fieldname2)])
+```
+
+```{r Social Work and Policy Studies}
+unique(FULL.d$fieldname[grep("SOC|SWPS|SW|SPEC", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("SOC|SWPS|SW|SPEC", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^SWPS$|^SPEC.*","SocialWork&PolicyStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("SOC|SWPS|SW|SPEC|Soc", FULL.d$fieldname2)])
+```
+
+```{r Sociology}
+unique(FULL.d$fieldname[grep("SOC", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("SOC", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^SOC$","Sociology",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("SOC|Sociology", FULL.d$fieldname2)])
+```
+
+```{r Spanish}
+unique(FULL.d$fieldname[grep("SPAN", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("SPAN", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("SPAN.*","Spanish",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("SPAN|Span", FULL.d$fieldname2)])
+```
+
+```{r Sport Management}
+unique(FULL.d$fieldname[grep("SPORT|SPTMGMTC|SPTMGMT&C", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("SPORT|SPTMGMTC|SPTMGMT&C", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("SPTMGMT.*","SportManagement",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("SPORT|SPTMGMTC|SPTMGMT&C|Sport", FULL.d$fieldname2)])
+```
+
+```{r Southeast Asian Studies}
+unique(FULL.d$fieldname[grep("S&SE|SSEA", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("S&SE|SSEA", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("S&SEA.*|SSEA.*", "SoutheastAsianStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("S&SE|SSEA|Southeast", FULL.d$fieldname2)])
+```
+
+```{r Statistics}
+unique(FULL.d$fieldname[grep("STAT|Stat", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("STAT|Stat", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^STATS$|^STAT$|STAT(?=&)","Statistics",FULL.d$fieldname2, perl = TRUE)
+FULL.d$fieldname2 <-gsub("(?<=Statistics)&MGT","&Management",FULL.d$fieldname2, perl = TRUE)
+FULL.d$fieldname2 <-gsub("^SMS$","Statistics&Management",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("STAT|Stat", FULL.d$fieldname2)])
+```
+
+```{r Study Abroad}
+unique(FULL.d$fieldname[grep("STDAB|NSA", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("STD|SA", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub(".*STDAB.*|.*(?<=ENGIN)SA","StudyAbroad",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("STD|SA|StudyA", FULL.d$fieldname2)])
+```
+
+```{r Surgery}
+unique(FULL.d$fieldname[grep("SURGERY", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("SURGERY", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^SURGERY$","Surgery",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("SURGERY|Surgery", FULL.d$fieldname2)])
+```
+
+```{r Technical Communications}
+unique(FULL.d$fieldname[grep("TCHN|TECH|COM", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("TCHN|TECH|COM", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^TCHNCLCM$","TechnicalCommunications",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("TCHN|Tech", FULL.d$fieldname2)])
+```
+
+```{r Theater and Music Theater}
+unique(FULL.d$fieldname[grep("MUST|THT|THEAT", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("MUST|THT|THEAT", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub(".*MUST.*|.*THT.*|.*THEAT.*","Theater&MusicalTheater",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("MUST|THT|THEAT|Theater", FULL.d$fieldname2)])
+```
+
+```{r Trombone}
+unique(FULL.d$fieldname[grep("TROM", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("TROM", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("TROMBONE","Trombone",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("TROM|Trom", FULL.d$fieldname2)])
+```
+
+```{r Trumpet and Cornet}
+unique(FULL.d$fieldname[grep("TRUM|CORN", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("TRUM", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("TRUM(?!-)","Trumpet",FULL.d$fieldname2, perl = TRUE)
+FULL.d$fieldname2 <-gsub("TRUM-CORN","TrumpetCornet",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("TRUM|Trum", FULL.d$fieldname2)])
+```
+
+```{r University Course}
+unique(FULL.d$fieldname[grep("UC|UNIV", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("UC|UNIV", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^UC$|^UNIVCRSE$","UniversityCourse",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("UC|UNIV|Univ", FULL.d$fieldname2)])
+```
+
+```{r Urban Planning}
+unique(FULL.d$fieldname[grep("URB|UP|PLA", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("URB|UP|PLA", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("URBANPLN|^UP$","UrbanPlanning",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("URB|UP|PLA|Urb", FULL.d$fieldname2)])
+```
+
+```{r Urban Planning}
+unique(FULL.d$fieldname[grep("U-", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("U-", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^U-MOVE$","U-Move",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("U-", FULL.d$fieldname2)])
+```
+
+```{r Viola}
+unique(FULL.d$fieldname[grep("VIOL", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("VIOL", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^VIOLA$","Viola",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("VIOL|Viol", FULL.d$fieldname2)])
+```
+
+```{r Violin}
+unique(FULL.d$fieldname[grep("VIOL", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("VIOL", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("^VIOLIN$","Violin",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("VIOL|Viol", FULL.d$fieldname2)])
+```
+
+```{r Voice}
+unique(FULL.d$fieldname[grep("VOICE", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("VOICE", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("VOICE(?![A-Z])","Voice",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("Voice|VOICE", FULL.d$fieldname2)])
+```
+
+```{r Voice Literature}
+unique(FULL.d$fieldname[grep("VOICE|LIT|VOICELIT", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("VOICE|LIT|VOICELIT", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("VOICE(?=L).*","VoiceLiterature",FULL.d$fieldname2, perl = TRUE)
+unique(FULL.d$fieldname2[grep("VOICE|LIT|VOICELIT|Voice", FULL.d$fieldname2)])
+```
+
+```{r Wind Percussion}
+unique(FULL.d$fieldname[grep("WIND|PERC", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("WIND|PERC", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("WINDPERC","WindPercussion",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("WIND|PERC|Wind", FULL.d$fieldname2)])
+```
+
+```{r "Women's Studies"}
+unique(FULL.d$fieldname[grep("WOMEN", FULL.d$fieldname)])
+unique(FULL.d$fieldname2[grep("WOMEN", FULL.d$fieldname2)])
+FULL.d$fieldname2 <-gsub("WOMENS.*","WomensStudies",FULL.d$fieldname2)
+unique(FULL.d$fieldname2[grep("WOMEN|Women", FULL.d$fieldname2)])
+```
+
+```{r Lists of Recoded Fields Sorted Alphabetically by First Letter 2}
+FIELDlist2 <- unique(FULL.d$fieldname2)
+FIELDlist2.toup <- unique(tapply(FIELDlist2, toupper(substr(FIELDlist2, 1, 1)),identity))
+#FIELDlist2.toup
+```
+
+```{r Creating New Course Identifier Variable}
+FULL.d$course <- paste0(FULL.d$fieldname2, FULL.d$coursenum)
+FULL.d$course <- as.factor(FULL.d$course)
+
+# Create a unique, quantitative identifier for each course in the data.
+list.course.numerical <- as.data.frame(unique(FULL.d$course))
+list.course.numerical <- list.course.numerical %>% mutate(V1 = 1:n())
+names(list.course.numerical)[1:2] = c("course",
+                                      "course.numerical")
+FULL.d <- merge(FULL.d, list.course.numerical, by="course")
+```
+
+```{r Removing Courses Only Attended Once}
+FULL.d <- FULL.d %>%
+  group_by(course) %>%
+  filter(n() > 1) %>%
+  ungroup()
+```
+
+```{r Lists of Recoded Fields Sorted Alphabetically by First Letter 3}
+FIELDlist3 <- unique(FULL.d$fieldname2)
+FIELDlist3.toup <- unique(tapply(FIELDlist2, toupper(substr(FIELDlist2, 1, 1)),identity))
+FIELDlist3.toup
+
+# Exportable list
+#FIELD.LIST.d <- as.data.frame(FIELDlist3)
+#write.table(FIELD.LIST.d, file = "/Users/ianscotnesbitt/Desktop/Getting A's in B-School Project/Excel Files/FieldList3.csv", sep = " ")
+```
+
+```{r Creating Field-Type Dummy Variables - Business}
+FULL.d$business <- as.factor(ifelse(
+FULL.d$fieldname2 == "Accounting"|
+FULL.d$fieldname2 == "BusinessAdministration"|
+FULL.d$fieldname2 == "BusinessEconomics"|
+FULL.d$fieldname2 == "BusinessEntrepreneurship"|
+FULL.d$fieldname2 == "ComputerInformationSystems"|
+FULL.d$fieldname2 == "CorporateStrategy"|
+FULL.d$fieldname2 == "Finance"|
+FULL.d$fieldname2 == "InternationalBusiness"|
+FULL.d$fieldname2 == "Marketing"|
+FULL.d$fieldname2 == "OperationsManagement"|
+FULL.d$fieldname2 == "OrganizationalBehavior&HumanResourcesManagement"|
+FULL.d$fieldname2 == "Statistics&Management",
+    "Business",
+    "Non-Business"
+    ))
+FULL.d$business <- fct_relevel(FULL.d$business, "Non-Business")
+FULL.d$business.numerical <- ifelse(FULL.d$business == "Business", 1, 0)
+```
+
+```{r Creating Field-Type Dummy Variables - Economics}
+FULL.d$economics <- as.factor(ifelse(
+FULL.d$fieldname2 == "Economics",
+    "Economics",
+    "Non-Economics"
+    ))
+FULL.d$economics <- fct_relevel(FULL.d$economics, "Non-Economics")
+FULL.d$economics.numerical <- ifelse(FULL.d$economics == "Economics", 1, 0)
+```
+
+```{r Creating Field-Type Dummy Variables - Mathematics}
+FULL.d$mathematics <- as.factor(ifelse(
+FULL.d$fieldname2 == "Mathematics"|
+FULL.d$fieldname2 == "Statistics",
+    "Mathematics",
+    "Non-Mathematics"
+    ))
+FULL.d$mathematics <- fct_relevel(FULL.d$mathematics, "Non-Mathematics")
+FULL.d$mathematics.numerical <- ifelse(FULL.d$mathematics == "Mathematics", 1, 0)
+```
+
+```{r Creating Field-Type Dummy Variables - Life Sciences}
+FULL.d$lifesciences <- as.factor(ifelse(
+FULL.d$fieldname2 == "Anatomy"|
+FULL.d$fieldname2 == "BiologicalChemistry"|
+FULL.d$fieldname2 == "Biology"|
+FULL.d$fieldname2 == "Chemistry"|
+FULL.d$fieldname2 == "Environmental&IndustrialHealth"|
+FULL.d$fieldname2 == "EnvironmentalStudies"|
+FULL.d$fieldname2 == "Epidemiology"|
+FULL.d$fieldname2 == "HealthManagement&Policy"|
+FULL.d$fieldname2 == "HumanGenetics"|
+FULL.d$fieldname2 == "IntegratedPremedical"|
+FULL.d$fieldname2 == "MedicalChemistry"|
+FULL.d$fieldname2 == "MedicalSchoolAdministration"|
+FULL.d$fieldname2 == "Microbiology"|
+FULL.d$fieldname2 == "NaturalResources&Environment"|
+FULL.d$fieldname2 == "Nursing"|
+FULL.d$fieldname2 == "Pediatrics"|
+FULL.d$fieldname2 == "Pharmacy"|
+FULL.d$fieldname2 == "Physiology",
+    "LifeSciences",
+    "Non-LifeSciences"
+    ))
+FULL.d$lifesciences <- fct_relevel(FULL.d$lifesciences, "Non-LifeSciences")
+FULL.d$lifesciences.numerical <- ifelse(FULL.d$lifesciences == "LifeSciences", 1, 0)
+```
+
+```{r Creating Field-Type Dummy Variables - Sports Sciences}
+FULL.d$sportssciences <- as.factor(ifelse(
+FULL.d$fieldname2 == "AthleticTraining"|
+FULL.d$fieldname2 == "Kinesiology"|
+FULL.d$fieldname2 == "MovementScience"|
+FULL.d$fieldname2 == "SportManagement",
+    "SportsSciences",
+    "Non-SportsSciences"
+    ))
+FULL.d$sportssciences <- fct_relevel(FULL.d$sportssciences, "Non-SportsSciences")
+FULL.d$sportssciences.numerical <- ifelse(FULL.d$sportssciences == "SportsSciences", 1, 0)
+```
+
+```{r Creating Field-Type Dummy Variables - Physical Sciences} 
+FULL.d$physicalsciences <- as.factor(ifelse(
+FULL.d$fieldname2 == "Aerospace"|
+FULL.d$fieldname2 == "Astronomy"|
+FULL.d$fieldname2 == "AtmosphericOceanic&SpaceScience"|
+FULL.d$fieldname2 == "GeologicalScience"|
+FULL.d$fieldname2 == "NuclearEngineering&RadiologicalSciences"|
+FULL.d$fieldname2 == "Physics"|
+FULL.d$fieldname2 == "PhysicsKellerTutor"|
+FULL.d$fieldname2 == "ResidentialCollegeNaturalSciences",
+    "PhysicalSciences",
+    "Non-PhysicalSciences"
+    ))
+FULL.d$physicalsciences <- fct_relevel(FULL.d$physicalsciences, "Non-PhysicalSciences")
+FULL.d$physicalsciences.numerical <- ifelse(FULL.d$physicalsciences == "PhysicalSciences", 1, 0)
+```
+
+```{r Creating Field-Type Dummy Variables - Social Sciences}
+FULL.d$socialsciences <- as.factor(ifelse(
+FULL.d$fieldname2 == "BiologicalAnthropology"|
+FULL.d$fieldname2 == "Communication"|
+FULL.d$fieldname2 == "CulturalAnthropology"|
+FULL.d$fieldname2 == "Geography"|
+FULL.d$fieldname2 == "PoliticalScience"|
+FULL.d$fieldname2 == "Psychology"|
+FULL.d$fieldname2 == "PublicPolicy"|
+FULL.d$fieldname2 == "ResidentialCollegeSocialSciences"|
+FULL.d$fieldname2 == "SocialWork&PolicyStudies"|
+FULL.d$fieldname2 == "Sociology"|
+FULL.d$fieldname2 == "UrbanPlanning",
+    "SocialSciences",
+    "Non-SocialSciences"
+    ))
+FULL.d$socialsciences <- fct_relevel(FULL.d$socialsciences, "Non-SocialSciences")
+FULL.d$socialsciences.numerical <- ifelse(FULL.d$socialsciences == "SocialSciences", 1, 0)
+```
+
+```{r Creating Field-Type Dummy Variables - Education}
+FULL.d$education <- as.factor(ifelse(
+FULL.d$fieldname2 == "Education"|
+FULL.d$fieldname2 == "MusicalEducation"|
+FULL.d$fieldname2 == "PhysicalEducation",
+    "Education",
+    "Non-Education"
+    ))
+FULL.d$education <- fct_relevel(FULL.d$education, "Non-Education")
+FULL.d$education.numerical <- ifelse(FULL.d$education == "Education", 1, 0)
+```
+
+```{r Creating Field-Type Dummy Variables - Humanities}
+FULL.d$humanities <- as.factor(ifelse(
+FULL.d$fieldname2 == "AfroAmericanStudies"|
+FULL.d$fieldname2 == "AmericanCulture"|
+FULL.d$fieldname2 == "AncientCivilizations&BiblicalStudies"|
+FULL.d$fieldname2 == "ArabicArmenianPersianTurkish&IslamicStudies"|
+FULL.d$fieldname2 == "Armenian"|
+FULL.d$fieldname2 == "Asian"|
+FULL.d$fieldname2 == "BuddhistStudies"|
+FULL.d$fieldname2 == "ClassicalArchitecture"|
+FULL.d$fieldname2 == "ClassicalCivilization"|
+FULL.d$fieldname2 == "Chinese"|
+FULL.d$fieldname2 == "Czech"|
+FULL.d$fieldname2 == "ClassicalArchitecture"|
+FULL.d$fieldname2 == "ClassicalCivilization"|
+FULL.d$fieldname2 == "Chinese"|
+FULL.d$fieldname2 == "Czech"|
+FULL.d$fieldname2 == "Dutch"|
+FULL.d$fieldname2 == "EnglishCompositionBoard"|
+FULL.d$fieldname2 == "EnglishLiterature&Composition"|
+FULL.d$fieldname2 == "French"|
+FULL.d$fieldname2 == "German"|
+FULL.d$fieldname2 == "GreatBooks"|
+FULL.d$fieldname2 == "Greek"|
+FULL.d$fieldname2 == "Hebrew&JewishCulturalStudies"|
+FULL.d$fieldname2 == "History"|
+FULL.d$fieldname2 == "Humanities"|
+FULL.d$fieldname2 == "Italian"|
+FULL.d$fieldname2 == "Japanese"|
+FULL.d$fieldname2 == "JudaicStudies"|
+FULL.d$fieldname2 == "Korean"|
+FULL.d$fieldname2 == "Latin"|
+FULL.d$fieldname2 == "LatinAmerican&CaribbeanStudies"|
+FULL.d$fieldname2 == "LawHistory&Communications"|
+FULL.d$fieldname2 == "Linguistics"|
+FULL.d$fieldname2 == "Medieval&EarlyModernStudies"|
+FULL.d$fieldname2 == "Medieval&RenaissanceStudies"|
+FULL.d$fieldname2 == "MuseumMethods"|
+FULL.d$fieldname2 == "Philosophy"|
+FULL.d$fieldname2 == "Polish"|
+FULL.d$fieldname2 == "Portuguese"|
+FULL.d$fieldname2 == "ResidentialCollegeHumanities"|
+FULL.d$fieldname2 == "Religion"|
+FULL.d$fieldname2 == "Russian"|
+FULL.d$fieldname2 == "Russian&EasternEuropeanStudies"|
+FULL.d$fieldname2 == "Scandinavian"|
+FULL.d$fieldname2 == "Slavic"|
+FULL.d$fieldname2 == "SoutheastAsianStudies"|
+FULL.d$fieldname2 == "Spanish"|
+FULL.d$fieldname2 == "WomensStudies",
+    "Humanities",
+    "Non-Humanities"
+    ))
+FULL.d$humanities <- fct_relevel(FULL.d$humanities, "Non-Humanities")
+FULL.d$humanities.numerical <- ifelse(FULL.d$humanities == "Humanities", 1, 0)
+```
+
+```{r Creating Field-Type Dummy Variables - Performing Arts}
+FULL.d$performingarts <- as.factor(ifelse(
+FULL.d$fieldname2 == "Dance"|
+FULL.d$fieldname2 == "Ensemble"|
+FULL.d$fieldname2 == "Film"|
+FULL.d$fieldname2 == "MusicalPerformance"|
+FULL.d$fieldname2 == "Opera"|
+FULL.d$fieldname2 == "PerformingArtsTechnology"|
+FULL.d$fieldname2 == "Theater&MusicalTheater",
+    "PerformingArts",
+    "Non-PerformingArts"
+    ))
+FULL.d$performingarts <- fct_relevel(FULL.d$performingarts, "Non-PerformingArts")
+FULL.d$performingarts.numerical <- ifelse(FULL.d$performingarts == "PerformingArts", 1, 0)
+```
+
+```{r Creating Field-Type Dummy Variables - Engineering}
+FULL.d$engineering <- as.factor(ifelse(
+FULL.d$fieldname2 == "Architecture"|
+FULL.d$fieldname2 == "BiomedicalEngineering"|
+FULL.d$fieldname2 == "ChemicalEngineering"|
+FULL.d$fieldname2 == "Civil&EnvironmentalEngineering"|
+FULL.d$fieldname2 == "ComputerScience"|
+FULL.d$fieldname2 == "ElectricalEngineering"|
+FULL.d$fieldname2 == "Engineering"|
+FULL.d$fieldname2 == "Industrial&OperationsEngineering"|
+FULL.d$fieldname2 == "Manufacturing"|
+FULL.d$fieldname2 == "MaterialScience"|
+FULL.d$fieldname2 == "MechanicalEngineering"|
+FULL.d$fieldname2 == "MilitaryScience"|
+FULL.d$fieldname2 == "NavalArchitecture"|
+FULL.d$fieldname2 == "NavalScience"|
+FULL.d$fieldname2 == "TechnicalCommunications",
+    "Engineering",
+    "Non-Engineering"
+    ))
+FULL.d$engineering <- fct_relevel(FULL.d$engineering, "Non-Engineering")
+FULL.d$engineering.numerical <- ifelse(FULL.d$engineering == "Engineering", 1, 0)
+```
+
+```{r Creating Field-Type Dummy Variables - Music}
+FULL.d$music <- as.factor(ifelse(
+FULL.d$fieldname2 == "Carillon"|
+FULL.d$fieldname2 == "Cello"|
+FULL.d$fieldname2 == "Clarinet"|
+FULL.d$fieldname2 == "Conducting"|
+FULL.d$fieldname2 == "EuphoniumBaritone"|
+FULL.d$fieldname2 == "Flute"|
+FULL.d$fieldname2 == "FrenchHorn"|
+FULL.d$fieldname2 == "Guitar"|
+FULL.d$fieldname2 == "Harp"|
+FULL.d$fieldname2 == "Jazz"|
+FULL.d$fieldname2 == "Musicology"|
+FULL.d$fieldname2 == "MusicTheory"|
+FULL.d$fieldname2 == "Percussion"|
+FULL.d$fieldname2 == "Piano"|
+FULL.d$fieldname2 == "PianoLiterature&Pedagogy"|
+FULL.d$fieldname2 == "Saxophone"|
+FULL.d$fieldname2 == "Trombone"|
+FULL.d$fieldname2 == "TrumpetCornet"|
+FULL.d$fieldname2 == "Viola"|
+FULL.d$fieldname2 == "Violin"|
+FULL.d$fieldname2 == "Voice"|
+FULL.d$fieldname2 == "VoiceLiterature"|
+FULL.d$fieldname2 == "WindPercussion",
+    "Music",
+    "Non-Music"
+    ))
+FULL.d$music <- fct_relevel(FULL.d$music, "Non-Music")
+FULL.d$music.numerical <- ifelse(FULL.d$music == "Music", 1, 0)
+```
+
+```{r Creating Field-Type Dummy Variables - Fine Arts} 
+FULL.d$finearts <- as.factor(ifelse(
+FULL.d$fieldname2 == "Art"|
+FULL.d$fieldname2 == "ResidentialCollegeArt",
+    "FineArts",
+    "Non-FineArts"
+    ))
+FULL.d$finearts <- fct_relevel(FULL.d$finearts, "Non-FineArts")
+FULL.d$finearts.numerical <- ifelse(FULL.d$finearts == "FineArts", 1, 0)
+```
+
+# DATA CLEANING PART II: REDUCING DATA TO INCLUDE STUDENTS WITH MULTIPLE ENTRIES ONLY
+
+```{r Renaming Student ID and Removing Students Who Only Took One Course}
+FULL.d$student <- as.factor(FULL.d$personidentifier)
+
+# Ensuring that each student attended at least two courses.
+FULL.d <- FULL.d %>%
+  group_by(student) %>%
+  filter(n() > 1) %>%
+  ungroup()
+```
+
+# DATA CLEANING PART III: "LAGGING" VARIABLES
+
+```{r Filling in Missing Ambition Data}
+LAG.d <- unique(FULL.d[, c("student",
+                           "goal9701",
+                           "goal9702",
+                           "goal9703",
+                           "goal9704",
+                           "goal9705",
+                           "goal9706",
+                           "goal9707",
+                           "goal9708",
+                           "goal9709",
+                           "goal9710",
+                           "goal9711",
+                           "goal9712",
+                           "goal9713",
+                           "goal9715",
+                           "goal9716",
+                           "goal9717",
+                           "goal9718",
+                           "goal9719"
+                           )
+                       ]
+                )
+LAG.d <- LAG.d %>%
+  add_count(student, name = "count.student")
+
+LAG.d <- subset(LAG.d, !(count.student = 1 &
+                   is.na(goal9701) &
+                   is.na(goal9702) &
+                   is.na(goal9703) &
+                   is.na(goal9704) &
+                   is.na(goal9705) &
+                   is.na(goal9706) &
+                   is.na(goal9707) &
+                   is.na(goal9708) &
+                   is.na(goal9709) &
+                   is.na(goal9710) &
+                   is.na(goal9711) &
+                   is.na(goal9712) &
+                   is.na(goal9713) &
+                   is.na(goal9715) &
+                   is.na(goal9716) &
+                   is.na(goal9717) &
+                   is.na(goal9718) &
+                   is.na(goal9719)
+                   )
+                )
+
+FULL.d <- merge(x=FULL.d, y=LAG.d, by = "student", all.x = TRUE)
+
+# Rename the columns as field-types
+names(FULL.d)[164:181] = c("goal9701",
+                         "goal9702",
+                         "goal9703",
+                         "goal9704",
+                         "goal9705",
+                         "goal9706",
+                         "goal9707",
+                         "goal9708",
+                         "goal9709",
+                         "goal9710",
+                         "goal9711",
+                         "goal9712",
+                         "goal9713",
+                         "goal9715",
+                         "goal9716",
+                         "goal9717",
+                         "goal9718",
+                         "goal9719")
+```
+
+```{r Factor Analysis of all Ambitions Items}
+AMB.d <- unique(FULL.d[, c("student",
+                           "goal9701",
+                           "goal9702",
+                           "goal9703",
+                           "goal9704",
+                           "goal9705",
+                           "goal9706",
+                           "goal9707",
+                           "goal9708",
+                           "goal9709",
+                           "goal9710",
+                           "goal9711",
+                           "goal9712",
+                           "goal9713",
+                           "goal9714",
+                           "goal9715",
+                           "goal9716",
+                           "goal9717",
+                           "goal9718",
+                           "goal9719"
+                           )
+                       ]
+                )
+
+AMB.d <- AMB.d[, c(2:20)]
+AMB.d <- AMB.d[complete.cases(AMB.d),]
+round(cor(AMB.d),2)
+
+allamb.FA <- omega(AMB.d, check.keys=TRUE) 
+summary(allamb.FA)
+```
+
+```{r Conventional Ambitions Scale}
+#conventional
+  #goal07="HAVE ADMINISTRATIVE RESPONSIBILITY"
+  #goal08="BE VERY WELL OFF FINANCIALLY"
+  #goal13="BE SUCCESSFUL IN OWN BUSINESS"
+CON.d <- unique(FULL.d[, c("student",
+                           "goal9707",
+                           "goal9708",
+                           "goal9713")])
+
+CON.d <- CON.d[, c("goal9707",
+                   "goal9708",
+                   "goal9713")]
+
+CON.d <- CON.d[complete.cases(CON.d),]
+
+round(cor(CON.d),2)
+
+CON.FA <- omega(CON.d, check.keys=TRUE) 
+summary(CON.FA)
+
+# Conventional ambition scale
+FULL.d$ambition.conventional <- (FULL.d$goal9707 + FULL.d$goal9708 + FULL.d$goal9713)/3
+FULL.d$ambition.conventional <- scale(FULL.d$ambition.conventional, center = TRUE)
+
+# Conventional ambition scale (without "Be Successful in own Business" item)
+FULL.d$ambition.conventional.reduced <- (FULL.d$goal9707 + FULL.d$goal9708)/2
+FULL.d$ambition.conventional.reduced <- scale(FULL.d$ambition.conventional.reduced, center = TRUE)
+```
+
+```{r Political Influence Ambition Scale}
+# goal04="INFLUENCE POLITICAL STRUCTURE"
+# goal05"INFLUENCE SOCIAL VALUES"
+# goal18="KEEP UP WITH POLITICAL AFFAIRS"
+# goal19="BE A COMMUNITY LEADER"
+
+PWR.d <- unique(FULL.d[, c("student",
+                           "goal9704",
+                           "goal9705",
+                           "goal9718",
+                           "goal9719")])
+
+PWR.d <- PWR.d[, c("goal9704",
+                   "goal9705",
+                   "goal9718",
+                   "goal9719")]
+
+PWR.d <- PWR.d[complete.cases(PWR.d),]
+
+round(cor(PWR.d), 2)
+
+
+PWR.FA <- omega(PWR.d, check.keys=TRUE) 
+summary(PWR.FA)
+
+# Political influence ambition scale
+FULL.d$ambition.power <- (FULL.d$goal9704 + FULL.d$goal9705 + FULL.d$goal9718 + FULL.d$goal9719)/4
+FULL.d$ambition.power <- scale(FULL.d$ambition.power, center = TRUE)
+```
+
+```{r Scientific Ambition Scale}
+# goal02="BECOME AUTHORITY IN MY OWN FIELD"
+# goal03="OBTAIN RECOGNITION FROM COLLEAGUES"
+# goal10="MAKE THEORETICAL CONTRIB TO SCIENCE"
+
+SCI.d <- unique(FULL.d[, c("student",
+                           "goal9702",
+                           "goal9703",
+                           "goal9710")])
+
+
+SCI.d <- SCI.d[, c("goal9702",
+                   "goal9703",
+                   "goal9710")]
+
+SCI.d <- SCI.d[complete.cases(SCI.d),]
+str(SCI.d)
+round(cor(SCI.d), 2)
+
+SCI.FA <- omega (SCI.d, check.keys=TRUE) 
+summary
+
+# Scientific ambition scale
+FULL.d$ambition.scientific <- (FULL.d$goal9702 + FULL.d$goal9703 + FULL.d$goal9710)/3
+FULL.d$ambition.scientific <- scale(FULL.d$ambition.scientific, center = TRUE)
+```
+
+```{r Artistic Ambition Scale}
+# goal01="ACHIEVE IN A PERFORMING ART"
+# goal11="WRITE ORIGINAL WORKS"
+# goal12="CREATE ARTISTIC WORK"
+
+ART.d <- unique(FULL.d[, c("student",
+                           "goal9701",
+                           "goal9711",
+                           "goal9712")])
+
+ART.d <- ART.d[, c("goal9701",
+                   "goal9711",
+                   "goal9712")]
+
+ART.d <- ART.d[complete.cases(ART.d),]
+
+round(cor(ART.d), 2)
+
+ART.FA <- omega(ART.d, check.keys=TRUE) 
+summary(ART.FA)
+
+# Artistic ambition scale
+FULL.d$ambition.artistic <- (FULL.d$goal9701 + FULL.d$goal9711 + FULL.d$goal9712)/3
+FULL.d$ambition.artistic <- scale(FULL.d$ambition.artistic, center = TRUE)
+```
+
+```{r Social Justice Ambition}
+# goal09="HELP OTHERS IN DIFFICULTY"
+# goal14="BE INVOLVED IN EVIRONMENTAL CLEAN-UP"
+# goal16="TAKE PART IN COMMUNITY ACTION"
+  #goal17="PROMOTE RACIAL UNDERSTANDING"
+
+SOJ.d <- unique(FULL.d[, c("student",
+                           "goal9709",
+                           "goal9714",
+                           "goal9716",
+                           "goal9717")])
+
+SOJ.d <- SOJ.d[, c("goal9709",
+                   "goal9714",
+                   "goal9716",
+                   "goal9717")]
+
+SOJ.d <- SOJ.d[complete.cases(SOJ.d),]
+
+round(cor(SOJ.d), 2)
+
+SOJ.FA <- omega(SOJ.d, check.keys=TRUE) 
+summary(SOJ.FA)
+
+# Social justice ambition scale
+FULL.d$ambition.socialjustice <- (FULL.d$goal9709 + FULL.d$goal9714 + FULL.d$goal9716 + FULL.d$goal9717)/4
+FULL.d$ambition.socialjustice <- scale(FULL.d$ambition.socialjustice, center = TRUE)
+```
+
+# DATA CLEANING PART IV: COVARIATES
+
+```{r Factoring and Recoding Sex}
+FULL.d$sex.numerical <- as.numeric(FULL.d$sex)-1
+
+FULL.d$sex <- as.factor(FULL.d$sex)
+FULL.d$sex <- recode(FULL.d$sex,
+                    '2'="Male",
+                    '1'="Female")
+FULL.d$sex <- fct_relevel(FULL.d$sex, "Male")
+```
+
+```{r Factoring and Renaming School Year}
+FULL.d$schoolyear.numerical <- FULL.d$schlyear
+FULL.d$schoolyear <- as.factor(FULL.d$schlyear)
+```
+
+```{r Factoring and Renaming Students' Level of Financial Concern}
+FULL.d$financialconcern.numerical <- as.numeric(FULL.d$fincon)
+
+FULL.d$financialconcern <- as.factor(FULL.d$fincon)
+FULL.d$financialconcern <- recode(FULL.d$financialconcern,
+                    '3'= "Major Financial Concern",
+                    '2'= "Some Financial Concern",
+                    '1'= "No Financial Concern")
+```
+
+```{r Factoring Native English Speaking Status}
+FULL.d$nativeenglish.numerical <- as.numeric(FULL.d$natengsp)
+
+FULL.d$nativeenglish <- as.factor(FULL.d$natengsp)
+FULL.d$nativeenglish <- recode(FULL.d$nativeenglish,
+                    '2'= "Native Speaker",
+                    '1'= "Non-Native Speaker")
+```
+
+```{r Relabling and Centering High school GPA}
+# High school GPA is scaled 0-8, not 4.0 scale, so it is centered to treat skew
+FULL.d$highschoolgpa <- scale(FULL.d$hsgpa, center = TRUE)
+```
+
+```{r Relabling and Centering Standardized Test Score Total}
+# Some students had SAT scores, some had ACT, so all were converted to the SAT scale.
+
+# Renaming and converting test scores to numeric
+FULL.d$satscore <- as.numeric(FULL.d$t_total)
+
+# Dropping unrealistically low scores
+FULL.d$satscore[FULL.d$satscore < 200] <- NA 
+
+# Centering test scores
+FULL.d$satscore <- scale(FULL.d$satscore, center = TRUE)
+```
+
+```{r Relabling and Centering Political ID}
+FULL.d$politicalid <- scale(FULL.d$politpr2, center = TRUE)
+```
+
+```{r Factoring and Recoding Age}
+FULL.d$agegroup.numerical <- as.numeric(FULL.d$age)
+
+FULL.d$agegroup <- as.factor(FULL.d$age)
+FULL.d$agegroup <- recode(FULL.d$agegroup,
+                        '1' = '16 years or younger',
+                        '2' = '17 years',
+                        '3' = '18 years',
+                        '4' = '19 years',
+                        '5' = '20 years',
+                        '6' = '21-24 years',
+                        '7' = '25-29 years',
+                        '8' = '30-39 years',
+                        '9' = '40-54 years',
+                        '10'= '55 years or older'
+                        )
+```
+
+```{r Creating Variable for Sum of Racial Groups}
+# Recoding original race variables to a (0,1) scheme from a (1,2) scheme
+FULL.d$race01 <- as.numeric(FULL.d$race01)-1
+FULL.d$race02 <- as.numeric(FULL.d$race02)-1
+FULL.d$race03 <- as.numeric(FULL.d$race03)-1
+FULL.d$race04 <- as.numeric(FULL.d$race04)-1
+FULL.d$race05 <- as.numeric(FULL.d$race05)-1
+FULL.d$race06 <- as.numeric(FULL.d$race06)-1
+FULL.d$race07 <- as.numeric(FULL.d$race07)-1
+FULL.d$race08 <- as.numeric(FULL.d$race08)-1
+FULL.d$race09 <- as.numeric(FULL.d$race09)-1
+FULL.d$race10 <- as.numeric(FULL.d$race10)-1
+FULL.d$race11 <- as.numeric(FULL.d$race11)-1
+FULL.d$race12 <- as.numeric(FULL.d$race12)-1
+FULL.d$race13 <- as.numeric(FULL.d$race13)-1
+
+# Sum of all race scores to determine how many people identify with how many races
+FULL.d$racecount <- rowSums(FULL.d[, c("race01",
+                                       "race02",
+                                       "race03",
+                                       "race04",
+                                       "race05",
+                                       "race06",
+                                       "race07",
+                                       "race08",
+                                       "race09",
+                                       "race10",
+                                       "race11",
+                                       "race12",
+                                       "race13")])
+
+table(FULL.d$racecount)
+```
+
+
+```{r Relabeling and Recoding Race Variables}
+# White
+FULL.d$race.white <- as.factor(FULL.d$race01)
+FULL.d$race.white <- recode(FULL.d$race.white,
+                               '1' = "White",
+                               '0' = "Non-White")
+
+# Black
+FULL.d$race.black <- as.factor(FULL.d$race02)
+FULL.d$race.black <- recode(FULL.d$race.black,
+                            '1' = "Black",
+                            '0' = "Non-Black")
+
+# Native American
+FULL.d$race.nativeamerican <- as.factor(FULL.d$race03)
+FULL.d$race.nativeamerican <- recode(FULL.d$race.nativeamerican,
+                            '1' = "NativeAmerican",
+                            '0' = "Non-NativeAmerican")
+
+# Mexican
+FULL.d$race.mexican <- as.factor(FULL.d$race04)
+FULL.d$race.mexican <- recode(FULL.d$race.mexican,
+                            '1' = "Mexican",
+                            '0' = "Non-Mexican")
+# Puerto Rican
+FULL.d$race.puertorican <- as.factor(FULL.d$race05)
+FULL.d$race.puertorican <- recode(FULL.d$race.puertorican,
+                            '1' = "PuertoRican",
+                            '0' = "Non-PuertoRican")
+
+
+# Other Latino
+FULL.d$race.otherlatino <- as.factor(FULL.d$race06)
+FULL.d$race.otherlatino <- recode(FULL.d$race.otherlatino,
+                            '1' = "OtherLatino",
+                            '0' = "Non-OtherLatino")
+
+# Chinese
+FULL.d$race.chinese <- as.factor(FULL.d$race07)
+FULL.d$race.chinese <- recode(FULL.d$race.chinese,
+                            '1' = "Chinese",
+                            '0' = "Non-Chinese")
+
+# Filipino
+FULL.d$race.filipino <- as.factor(FULL.d$race08)
+FULL.d$race.filipino <- recode(FULL.d$race.filipino,
+                            '1' = "Filipino",
+                            '0' = "Non-Filipino")
+
+# Japanese
+FULL.d$race.japanese <- as.factor(FULL.d$race09)
+FULL.d$race.japanese <- recode(FULL.d$race.japanese,
+                            '1' = "Japanese",
+                            '0' = "Non-Japanese")
+
+
+# Korean
+FULL.d$race.korean <- as.factor(FULL.d$race10)
+FULL.d$race.korean <- recode(FULL.d$race.korean,
+                            '1' = "Korean",
+                            '0' = "Non-Korean")
+
+
+# Southeast Asian
+FULL.d$race.southeastasian <- as.factor(FULL.d$race11)
+FULL.d$race.southeastasian <- recode(FULL.d$race.southeastasian,
+                            '1' = "SoutheastAsian",
+                            '0' = "Non-SoutheastAsian")
+
+
+# Other Asian
+FULL.d$race.otherasian <- as.factor(FULL.d$race12)
+FULL.d$race.otherasian <- recode(FULL.d$race.otherasian,
+                            '1' = "OtherAsian",
+                            '0' = "Non-OtherAsian")
+
+
+# Other
+FULL.d$race.other <- as.factor(FULL.d$race13)
+FULL.d$race.other <- recode(FULL.d$race.other,
+                            '1' = "Other",
+                            '0' = "Non-Other")
+```
+
+# DATA CLEANING PART V: OUTCOME VARIABLES
+
+```{r Renaming Grades Earned in Each Course}
+# Relabling letter grades
+FULL.d$grade.alphabetical <- as.factor(FULL.d$grade)
+summary(FULL.d$grade.alphabetical)
+
+# Relabling and checking numerical grades
+FULL.d$grade.numerical <- FULL.d$`grade#`
+summary(FULL.d$grade.numerical)
+```
+
+```{r Number of Courses by Field by Student}
+# Count the number of courses in each of the 13 field-types for each student in the data set 
+COURSECOUNT.d <- aggregate(
+  cbind(FULL.d$business.numerical,
+        FULL.d$economics.numerical,
+        FULL.d$mathematics.numerical,
+        FULL.d$lifesciences.numerical,
+        FULL.d$sportssciences.numerical,
+        FULL.d$physicalsciences.numerical,
+        FULL.d$socialsciences.numerical,
+        FULL.d$education.numerical,
+        FULL.d$humanities.numerical,
+        FULL.d$performingarts.numerical,
+        FULL.d$engineering.numerical,
+        FULL.d$music.numerical,
+        FULL.d$finearts.numerical
+    ),
+  by=list(
+    Category=FULL.d$student
+    ),
+  FUN=sum
+  )
+
+# Rename the columns as field-types
+names(COURSECOUNT.d)[1:14] = c("student",
+                               "count.business",
+                               "count.economics",
+                               "count.mathematics",
+                               "count.lifesciences",
+                               "count.sportssciences",
+                               "count.physicalsciences",
+                               "count.socialsciences",
+                               "count.education",
+                               "count.humanities",
+                               "count.performingarts",
+                               "count.engineering",
+                               "count.music",
+                               "count.finearts"
+                              )
+
+
+# Merging the new count of courses for each field-type with full data set
+FULL.d <- merge(FULL.d, COURSECOUNT.d, by="student")
+```
+
+# DATA CLEANING PART VI: PREPARING INDIVIDUAL-LEVEL DATA
+
+```{r Creating Individual-Level Data}
+IND.d <- FULL.d[, c("student",
+                    "sex",
+                    "sex.numerical",
+                    "agegroup",
+                    "agegroup.numerical",
+                    "satscore",
+                    "highschoolgpa",
+                    "politicalid",
+                    "financialconcern",
+                    "financialconcern.numerical",
+                    "nativeenglish",
+                    "nativeenglish.numerical",
+                    "ambition.conventional",
+                    "ambition.conventional.reduced",
+                    "ambition.power",
+                    "ambition.scientific",
+                    "ambition.artistic",
+                    "ambition.socialjustice",
+                    "race01",
+                    "race02",
+                    "race03",
+                    "race04",
+                    "race05",
+                    "race06",
+                    "race07",
+                    "race08",
+                    "race09",
+                    "race10",
+                    "race11",
+                    "race12",
+                    "race13",
+                    "race.white",
+                    "race.black",
+                    "race.nativeamerican",
+                    "race.mexican",
+                    "race.puertorican",
+                    "race.otherlatino",
+                    "race.chinese",
+                    "race.filipino",
+                    "race.japanese",
+                    "race.korean",
+                    "race.southeastasian",
+                    "race.otherasian",
+                    "race.other",
+                    "racecount",
+                    "count.business",
+                    "count.economics",
+                    "count.mathematics",
+                    "count.lifesciences",
+                    "count.sportssciences",
+                    "count.physicalsciences",
+                    "count.socialsciences",
+                    "count.education",
+                    "count.humanities",
+                    "count.performingarts",
+                    "count.engineering",
+                    "count.music",
+                    "count.finearts"
+                    )
+                ]
+
+# Reducing invidiual level data 
+IND.d <- unique(IND.d)
+
+# Second reduction because data's structure led to two unique rows for each student. This code removes the type of row that did not have individual-level data in it while preserving the type that did.
+IND.d <- subset(IND.d, !is.na(ambition.conventional) &
+                        !is.na(ambition.power) &
+                        !is.na(ambition.socialjustice) &
+                        !is.na(ambition.scientific) &
+                        !is.na(ambition.artistic))
+```
+
+# DATA ANALYSIS PART I: DESCRIPTIVE STATISTICS
+
+```{r Student Descriptives}
+# Sex/gender
+summary(IND.d$sex)
+
+# Age group
+summary(IND.d$agegroup)
+
+# Level of financial concern
+summary(IND.d$financialconcern)
+
+# English speaking status
+summary(IND.d$nativeenglish)
+
+# Race
+summary(IND.d$racecount)
+
+# Create dataframe with students and their racial category identifications only
+RACE.d <- unique(FULL.d[, c("student",
+                            "race.white",
+                            "race.black",
+                            "race.nativeamerican",
+                            "race.mexican",
+                            "race.puertorican",
+                            "race.otherlatino",
+                            "race.chinese",
+                            "race.filipino",
+                            "race.japanese",
+                            "race.korean",
+                            "race.southeastasian",
+                            "race.otherasian",
+                            "race.other")])
+
+# Percentage of students who do and do not identify with each racial category
+# White
+table(RACE.d$race.white)
+prop.table(table(RACE.d$race.white))
+
+# Black
+table(RACE.d$race.black)
+prop.table(table(RACE.d$race.black))
+
+# Native American
+table(RACE.d$race.nativeamerican)
+prop.table(table(RACE.d$race.nativeamerican))
+
+# Mexican
+table(RACE.d$race.mexican)
+prop.table(table(RACE.d$race.mexican))
+
+# Puerto Rican
+table(RACE.d$race.puertorican)
+prop.table(table(RACE.d$race.puertorican))
+
+# Other Latino
+table(RACE.d$race.otherlatino)
+prop.table(table(RACE.d$race.otherlatino))
+
+# Chinese
+table(RACE.d$race.chinese)
+prop.table(table(RACE.d$race.chinese))
+
+# Filipino
+table(RACE.d$race.filipino)
+prop.table(table(RACE.d$race.filipino))
+
+# Japanese
+table(RACE.d$race.japanese)
+prop.table(table(RACE.d$race.japanese))
+
+# Korean
+table(RACE.d$race.korean)
+prop.table(table(RACE.d$race.korean))
+
+# South East Asian
+table(RACE.d$race.southeastasian)
+prop.table(table(RACE.d$race.southeastasian))
+
+# Other Asian
+table(RACE.d$race.otherasian)
+prop.table(table(RACE.d$race.otherasian))
+
+# Other
+table(RACE.d$race.other)
+prop.table(table(RACE.d$race.other))
+```
+
+```{r Ambition Descriptives}
+FULL.d.no.na <- subset(FULL.d, !is.na(grade.numerical))
+
+# Create descriptive outputs
+conambdf <- varDescribe(FULL.d.no.na$ambition.conventional)
+powerambdf <- varDescribe(FULL.d.no.na$ambition.power)              
+scienceambdf <- varDescribe(FULL.d.no.na$ambition.scientific)
+artsambdf <- varDescribe(FULL.d.no.na$ambition.artistic)
+socialjambdf <- varDescribe(FULL.d.no.na$ambition.socialjustice)
+
+# Bind outputs into a data frame
+descriptives.ambitions <- rbind(conambdf,
+                                powerambdf,
+                                scienceambdf,
+                                artsambdf,
+                                socialjambdf)
+
+rownames(descriptives.ambitions) <- c("Conventional",
+                                      "Power",
+                                      "Scientific",
+                                      "Artistic",
+                                      "Social Justice")
+# The table 
+descriptives.ambitions
+```
+
+```{r Course Descriptives 1 - Number of Times a Course Within Each Field-Type was Enrolled in}
+# Business
+sum(FULL.d$business.numerical)
+summary(FULL.d$business)
+
+# Economics
+sum(FULL.d$economics.numerical)
+summary(FULL.d$economics)
+
+# Mathematics
+sum(FULL.d$mathematics.numerical)
+summary(FULL.d$mathematics)
+
+# Engineering
+sum(FULL.d$engineering.numerical)
+summary(FULL.d$engineering)
+
+# Physical Sciences
+sum(FULL.d$physicalsciences.numerical)
+summary(FULL.d$physicalsciences)
+
+# Social Sciences
+sum(FULL.d$socialsciences.numerical)
+summary(FULL.d$socialsciences)
+
+# Life Sciences
+sum(FULL.d$lifesciences.numerical)
+summary(FULL.d$lifesciences)
+
+# Sports Sciences
+sum(FULL.d$sportssciences.numerical)
+summary(FULL.d$sportssciences)
+
+# Education
+sum(FULL.d$education.numerical)
+summary(FULL.d$education)
+
+# Humanities
+sum(FULL.d$humanities.numerical)
+summary(FULL.d$humanities)
+
+# Fine Arts
+sum(FULL.d$finearts.numerical)
+summary(FULL.d$finearts)
+
+# Performing Arts
+sum(FULL.d$performingarts.numerical)
+summary(FULL.d$performingarts)
+
+# Music
+sum(FULL.d$music.numerical)
+summary(FULL.d$music)
+
+length(unique(FULL.d$course))
+length(unique(FULL.d.no.na$course))
+
+unique(FULL.d$course)
+```
+
+```{r EDIT LATER: Course Descriptives 2 - Mean and SD of Grade By Field Type} 
+attach(FULL.d)
+Mbiz <- aggregate(grade.numerical~business, FUN=mean)
+SDbiz <- aggregate(grade.numerical~business, FUN=sd)
+biz1 <- cbind(Mbiz, by="business")
+biz2 <- biz1[c(2),]
+setnames(biz2, "business", "Field")
+biz2$Field <- "business"
+
+
+Mec <- aggregate(grade.numerical~economics, FUN=mean)
+SDec <- aggregate(grade.numerical~economics, FUN=sd)
+ec1 <- merge(Mec, SDec, by="economics")
+ec2 <- ec1[c(2),]
+setnames(ec2, "economics", "Field")
+ec2$Field <- "economics"
+
+
+Mmath <- aggregate(grade.numerical~mathematics, FUN=mean)
+SDmath <- aggregate(grade.numerical~mathematics, FUN=sd)
+math1 <- merge(Mmath, SDmath, by="mathematics")
+math2 <- math1[c(2),]
+setnames(math2, "mathematics", "Field")
+math2$Field <- "mathematics"
+
+
+Megr <- aggregate(grade.numerical~engineering, FUN=mean)
+SDegr <- aggregate(grade.numerical~engineering, FUN=sd)
+egr1 <- merge(Megr, SDegr, by="engineering")
+egr2 <- egr1[c(2),]
+setnames(egr2, "engineering", "Field")
+egr2$Field <- "engineering"
+
+
+Mphys <- aggregate(grade.numerical~physicalsciences, FUN=mean)
+SDphys <- aggregate(grade.numerical~physicalsciences, FUN=sd)
+phys1 <- merge(Mphys, SDphys, by="physicalsciences")
+phys2 <- phys1[c(2),]
+setnames(phys2, "physicalsciences", "Field")
+phys2$Field <- "physical sciences"
+
+
+Msoc <- aggregate(grade.numerical~socialsciences, FUN=mean)
+SDsoc <- aggregate(grade.numerical~socialsciences, FUN=sd)
+soc1 <- merge(Msoc, SDsoc, by="socialsciences")
+soc2 <- soc1[c(2),]
+setnames(soc2, "socialsciences", "Field")
+soc2$Field <- "social sciences"
+
+
+Mlife <- aggregate(grade.numerical~lifesciences, FUN=mean)
+SDlife <- aggregate(grade.numerical~lifesciences, FUN=sd)
+life1 <- merge(Mlife, SDlife, by="lifesciences")
+life2 <- life1[c(2),]
+setnames(life2, "lifesciences", "Field")
+life2$Field <- "life sciences"
+
+
+Msprt <- aggregate(grade.numerical~sportssciences, FUN=mean)
+SDsprt <- aggregate(grade.numerical~sportssciences, FUN=sd)
+sprt1 <- merge(Msprt, SDsprt, by="sportssciences")
+sprt2 <- sprt1[c(2),]
+setnames(sprt2, "sportssciences", "Field")
+sprt2$Field <- "sports sciences"
+
+
+Medu <- aggregate(grade.numerical~education, FUN=mean)
+SDedu <- aggregate(grade.numerical~education, FUN=sd)
+edu1 <- merge(Medu, SDedu, by="education")
+edu2 <- edu1[c(2),]
+setnames(edu2, "education", "Field")
+edu2$Field <- "education"
+
+
+Mhum <- aggregate(grade.numerical~humanities, FUN=mean)
+SDhum <- aggregate(grade.numerical~humanities, FUN=sd)
+hum1 <- merge(Mhum, SDhum, by="humanities")
+hum2 <- hum1[c(2),]
+setnames(hum2, "humanities", "Field")
+hum2$Field <- "humanities"
+
+
+Mfine <- aggregate(grade.numerical~finearts, FUN=mean)
+SDfine <- aggregate(grade.numerical~finearts, FUN=sd)
+fine1 <- merge(Mfine, SDfine, by="finearts")
+fine2 <- fine1[c(2),]
+setnames(fine2, "finearts", "Field")
+fine2$Field <- "fine arts"
+
+
+Mperf <- aggregate(grade.numerical~performingarts, FUN=mean)
+SDperf <- aggregate(grade.numerical~performingarts, FUN=sd)
+perf1 <- merge(Mperf, SDperf, by="performingarts")
+perf2 <- perf1[c(2),]
+setnames(perf2, "performingarts", "Field")
+perf2$Field <- "performing arts"
+
+
+Mmus <- aggregate(grade.numerical~music, FUN=mean)
+SDmus <- aggregate(grade.numerical~music, FUN=sd)
+mus1 <- merge(Mmus, SDmus, by="music")
+mus2 <- mus1[c(2),]
+setnames(mus2, "music", "Field")
+mus2$Field <- "music"
+
+table.grade <- rbind(biz2,
+                    ec2,
+                    math2,
+                    egr2,
+                    phys2,
+                    soc2,
+                    life2,
+                    sprt2,
+                    edu2,
+                    hum2,
+                    fine2,
+                    perf2,
+                    mus2)
+
+rownames(table.grade) <- seq(length=nrow(table.grade)) 
+setnames(table.grade, "grade.numerical.x", "Mean")
+setnames(table.grade, "grade.numerical.y", "SD")
+
+
+table.grade <- table.grade %>%
+  mutate_at(vars(Mean, SD),
+            funs(round(., 2)))
+# The table
+table.grade
+```
+
+```{r EDIT LATER -- MIN AND MAX OF GRADES BY FIELD TYPE}
+attach(FULL.d.no.na)
+aggregate(grade.numerical~business, FUN=min)
+aggregate(grade.numerical~business, FUN=max)
+
+aggregate(grade.numerical~economics, FUN=min)
+aggregate(grade.numerical~economics, FUN=max)
+
+aggregate(grade.numerical~mathematics, FUN=min)
+aggregate(grade.numerical~mathematics, FUN=max)
+
+aggregate(grade.numerical~lifesciences, FUN=min)
+aggregate(grade.numerical~lifesciences, FUN=max)
+
+aggregate(grade.numerical~socialsciences, FUN=min)
+aggregate(grade.numerical~socialsciences, FUN=max)
+
+aggregate(grade.numerical~physicalsciences, FUN=min)
+aggregate(grade.numerical~physicalsciences, FUN=max)
+
+aggregate(grade.numerical~sportssciences, FUN=min)
+aggregate(grade.numerical~sportssciences, FUN=max)
+
+aggregate(grade.numerical~music, FUN=min)
+aggregate(grade.numerical~music, FUN=max)
+
+aggregate(grade.numerical~performingarts, FUN=min)
+aggregate(grade.numerical~performingarts, FUN=max)
+
+aggregate(grade.numerical~education, FUN=min)
+aggregate(grade.numerical~education, FUN=max)
+
+aggregate(grade.numerical~finearts, FUN=min)
+aggregate(grade.numerical~finearts, FUN=max)
+
+aggregate(grade.numerical~humanities, FUN=min)
+aggregate(grade.numerical~humanities, FUN=max)
+
+aggregate(grade.numerical~engineering, FUN=min)
+aggregate(grade.numerical~engineering, FUN=max)
+```
+
+```{r Data Export for Course Count Mediations in Mplus}
+# New object
+MPLUS.COURSE.d <- IND.d[,c("student",
+                           "sex.numerical",
+                           "agegroup.numerical",
+                           "satscore",
+                           "highschoolgpa",
+                           "politicalid",
+                           "financialconcern.numerical",
+                           "nativeenglish.numerical",
+                           "ambition.conventional",
+                           "ambition.conventional.reduced",
+                           "ambition.power",
+                           "ambition.scientific",
+                           "ambition.artistic",
+                           "ambition.socialjustice",
+                           "race01",
+                           "race02",
+                           "race03",
+                           "race04",
+                           "race05",
+                           "race06",
+                           "race07",
+                           "race08",
+                           "race09",
+                           "race10",
+                           "race11",
+                           "race12",
+                           "race13",
+                           "count.business",
+                           "count.economics",
+                           "count.mathematics",
+                           "count.lifesciences",
+                           "count.sportssciences",
+                           "count.physicalsciences",
+                           "count.socialsciences",
+                           "count.education",
+                           "count.humanities",
+                           "count.performingarts",
+                           "count.engineering",
+                           "count.music",
+                           "count.finearts")]
+
+# Recode NAs to -99 so that Mplus will tolerate them
+MPLUS.COURSE.d[is.na(MPLUS.COURSE.d)] <- -99
+
+# Write out a .csv with no row or column names
+#write.table(MPLUS.COURSE.d, "/Users/ianscotnesbitt/Desktop/ISN Data/MPLUSCOURSEd.csv", sep = ",", col.names =FALSE, row.names = FALSE)
+```
+
+```{r Data Export for GPA Mediations in Mplus}
+# New object
+MPLUS.GPA.d <- FULL.d[, c("student",
+                          "schoolyear.numerical",
+                          "sex.numerical",
+                          "agegroup.numerical",
+                          "satscore",
+                          "highschoolgpa",
+                          "politicalid",
+                          "financialconcern.numerical",
+                          "nativeenglish.numerical",
+                          "ambition.conventional",
+                          "ambition.conventional.reduced",
+                          "ambition.power",
+                          "ambition.scientific",
+                          "ambition.artistic",
+                          "ambition.socialjustice",
+                          "race01",
+                          "race02",
+                          "race03",
+                          "race04",
+                          "race05",
+                          "race06",
+                          "race07",
+                          "race08",
+                          "race09",
+                          "race10",
+                          "race11",
+                          "race12",
+                          "race13",
+                          "grade.numerical",
+                          "course.numerical",
+                          "business.numerical",
+                          "economics.numerical",
+                          "mathematics.numerical",
+                          "lifesciences.numerical",
+                          "sportssciences.numerical",
+                          "physicalsciences.numerical",
+                          "socialsciences.numerical",
+                          "education.numerical",
+                          "humanities.numerical",
+                          "performingarts.numerical",
+                          "engineering.numerical",
+                          "music.numerical",
+                          "finearts.numerical")]
+
+# Recode NAs to -99 so that Mplus will tolerate them
+MPLUS.GPA.d[is.na(MPLUS.GPA.d)] <- -99
+
+# Write out a .csv with no row or column names
+#write.table(MPLUS.GPA.d, "/Users/ianscotnesbitt/Desktop/ISN Data/MPLUSGPAd.csv", sep = ",", col.names =FALSE, row.names = FALSE)
+```
+
+# DATA ANALYSIS PART II: STATISTICAL MODELING
+
+```{r OLS regression of Political ID on Conventional Ambition}
+lm.con <- lm(ambition.conventional ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid,
+             data=IND.d)
+
+# Standardized coefficients
+con.beta <- lm.beta(lm.con)
+con.beta
+
+# Full regression output
+con.out <- summary(lm.con)
+con.out
+
+# Diagnostics
+con.res <- residualPlot(lm.con)
+con.res
+
+# Two item conventional ambition scale
+lm.con2 <- lm(ambition.conventional.reduced ~
+               agegroup +
+               sex +
+               race.white +
+               race.black +
+               race.chinese  +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.otherasian +
+               race.southeastasian +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.nativeamerican +
+               race.other +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid,
+             data=IND.d)
+
+# Standardized coefficients
+con2.beta <- lm.beta(lm.con2)
+con2.beta
+
+# Full regression output
+con2.out <- summary(lm.con2)
+
+con.out
+con2.out
+
+# Diagnostics
+con2.res <- residualPlot(lm.con2)
+con2.res
+```
+
+```{r OLS regression of Political ID on Political Ambition}
+lm.pwr <- lm(ambition.power ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid,
+             data=IND.d)
+
+# Standardized coefficients
+pwr.beta <- lm.beta(lm.pwr)
+pwr.beta
+
+# Full regression output
+pwr.out <- summary(lm.pwr)
+pwr.out
+
+# Diagnostics
+pwr.res <- residualPlot(lm.pwr)
+pwr.res
+```
+
+```{r OLS regression of Political ID on Artistic Ambition}
+lm.art <- lm(ambition.artistic ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid,
+             data=IND.d)
+
+# Standardized coefficients
+art.beta <- lm.beta(lm.art)
+art.beta
+
+# Full regression output
+art.out <- summary(lm.art)
+art.out
+
+# Diagnostics
+art.res <- residualPlot(lm.art)
+art.res
+```
+
+```{r OLS regression of Political ID on Scientific Ambition}
+lm.sci <- lm(ambition.scientific ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid,
+             data=IND.d)
+
+# Standardized coefficients
+sci.beta <- lm.beta(lm.sci)
+sci.beta
+
+# Full regression output
+sci.out <- summary(lm.sci)
+sci.out
+
+# Diagnostics
+sci.res <- residualPlot(lm.sci)
+sci.res
+```
+
+```{r OLS regression of Political ID on Social Justice Ambition}
+lm.soj <- lm(ambition.socialjustice ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid,
+             data=IND.d)
+
+# Standardized coefficients
+soj.beta <- lm.beta(lm.soj)
+soj.beta
+
+# Full regression output
+soj.out <- summary(lm.soj)
+soj.out
+
+# Diagnostics
+soj.res <- residualPlot(lm.soj)
+soj.res
+```
+
+```{r Poisson Regression of Number of Business Courses on Political ID and Ambitions}
+lm.bizcount <- glm(count.business ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+               )
+
+# Standardized coefficients
+bizcount.beta <- lm.beta(lm.bizcount)
+bizcount.beta
+
+# Full regression output
+bizcount.out <- summary(lm.bizcount)
+bizcount.out
+
+# Diagnostics
+bizcount.res <- residualPlot(lm.bizcount)
+bizcount.res
+```
+
+```{r Poisson Regression of Number of Economics Courses on Political ID and Ambitions}
+lm.econcount <- glm(count.economics ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+                )
+
+# Standardized coefficients
+econcount.beta <- lm.beta(lm.econcount)
+econcount.beta
+
+# Full regression output
+econcount.out <- summary(lm.econcount)
+econcount.out
+
+# Diagnostics
+econcount.res <- residualPlot(lm.econcount)
+econcount.res
+```
+
+```{r Poisson Regression of Number of Mathematics Courses on Political ID and Ambitions}
+lm.mathcount <- glm(count.mathematics ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+                )
+
+# Standardized coefficients
+mathcount.beta <- lm.beta(lm.mathcount)
+mathcount.beta
+
+# Full regression output
+mathcount.out <- summary(lm.mathcount)
+mathcount.out 
+
+# Diagnostics
+mathcount.res <- residualPlot(lm.mathcount)
+mathcount.res
+```
+
+```{r Poisson Regression of Number of Life Sciences Courses on Political ID and Ambitions}
+lm.lifescicount <- glm(count.lifesciences ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+                )
+
+# Standardized coefficients
+lifescicount.beta <- lm.beta(lm.lifescicount)
+lifescicount.beta
+
+# Full regression output
+lifescicount.out <- summary(lm.lifescicount)
+lifescicount.out
+
+# Diagnostics
+lifescicount.res <- residualPlot(lm.lifescicount)
+lifescicount.res
+```
+
+```{r Poisson Regression of Number of Sports Sciences Courses on Political ID and Ambitions}
+lm.sportsscicount <- glm(count.sportssciences ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+                )
+
+# Standardized coefficients
+sportsscicount.beta <- lm.beta(lm.sportsscicount)
+sportsscicount.beta
+
+# Full regression output
+sportsscicount.out <- summary(lm.sportsscicount)
+sportsscicount.out
+
+# Diagnostics
+sportsscicount.res <- residualPlot(lm.sportsscicount)
+sportsscicount.res
+```
+
+```{r Poisson Regression of Number of Physical Sciences Courses on Political ID and Ambitions}
+lm.physscicount <-glm(count.physicalsciences ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+                )
+
+# Standardized coefficients
+physscicount.beta <- lm.beta(lm.bizcount)
+physscicount.beta
+
+# Full regression output
+physscicount.out <- summary(lm.physscicount)
+physscicount.out
+
+# Diagnostics
+physscicount.res <- residualPlot(lm.physscicount)
+physscicount.res
+```
+
+```{r Poisson Regression of Number of Social Sciences Courses on Political ID and Ambitions}
+lm.socscicount <- glm(count.socialsciences ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+                )
+
+# Standardized coefficients
+socscicount.beta <- lm.beta(lm.socscicount)
+socscicount.beta
+
+# Full regression output
+socscicount.out <- summary(lm.socscicount)
+socscicount.out
+
+# Diagnostics
+socscicount.res <- residualPlot(lm.socscicount)
+socscicount.res
+```
+
+```{r Poisson Regression of Number of Education Courses on Political ID and Ambitions}
+lm.educount <- glm(count.education ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+                )
+
+# Standardized coefficients
+educount.beta <- lm.beta(lm.educount)
+educount.beta
+
+# Full regression output
+educount.out <- summary(lm.educount)
+educount.out
+
+# Diagnostics
+educount.res <- residualPlot(lm.educount)
+educount.res
+```
+
+```{r Poisson Regression of Number of Humanities Courses on Political ID and Ambitions}
+lm.humcount <- glm(count.humanities ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+                )
+
+# Standardized coefficients
+humcount.beta <- lm.beta(lm.humcount)
+humcount.beta
+
+# Full regression output
+humcount.out <- summary(lm.humcount)
+humcount.out 
+
+# Diagnostics
+humcount.res <- residualPlot(lm.humcount)
+humcount.res
+```
+
+```{r Poisson Regression of Number of Engineering Courses on Political ID and Ambitions}
+lm.engincount <- glm(count.engineering ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+                )
+
+# Standardized coefficients
+engincount.beta <- lm.beta(lm.engincount)
+engincount.beta
+
+# Full regression output
+engincount.out <- summary(lm.engincount)
+engincount.out 
+
+# Diagnostics
+engincount.res <- residualPlot(lm.engincount)
+engincount.res
+```
+
+
+```{r Poisson Regression of Number of Performing Arts Courses on Political ID and Ambitions}
+lm.perfcount <- glm(count.performingarts ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+                )
+
+# Standardized coefficients
+perfcount.beta <- lm.beta(lm.perfcount)
+perfcount.beta
+summary(lm.perfcount)
+
+# Full regression output
+perfcount.out <- summary(lm.perfcount)
+perfcount.out 
+
+# Diagnostics
+perfcount.res <- residualPlot(lm.perfcount)
+perfcount.res
+```
+
+```{r Poisson Regression of Number of Music Courses on Political ID and Ambitions}
+lm.musiccount <- glm(count.music ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+                )
+
+# Standardized coefficients
+musiccount.beta <- lm.beta(lm.musiccount)
+musiccount.beta
+
+# Full regression output
+musiccount.out <- summary(lm.musiccount)
+musiccount.out 
+
+# Diagnostics
+musiccount.res <- residualPlot(lm.musiccount)
+musiccount.res
+```
+
+```{r Poisson Regression of Number of Fine Arts Courses on Political ID and Ambitions}
+lm.fineartcount <- glm(count.finearts ~
+               sex +
+               race.black +
+               race.nativeamerican +
+               race.mexican +
+               race.puertorican +
+               race.otherlatino +
+               race.chinese +
+               race.filipino +
+               race.japanese +
+               race.korean +
+               race.southeastasian +
+               race.otherasian +
+               race.other +
+               agegroup +
+               satscore +
+               highschoolgpa +
+               financialconcern +
+               nativeenglish +
+               politicalid +
+               ambition.conventional +
+               ambition.power +
+               ambition.scientific +
+               ambition.artistic +
+               ambition.socialjustice,
+               family = "poisson",
+               data = IND.d
+                )
+
+# Standardized coefficients
+fineartcount.beta <- lm.beta(lm.fineartcount)
+fineartcount.beta
+
+# Full regression output
+fineartcount.out <- summary(lm.fineartcount)
+fineartcount.out 
+
+# Diagnostics
+fineartcount.res <- residualPlot(lm.fineartcount)
+fineartcount.res
+```
+
+```{r Cross-Classified Regression of Student and Course Variables on GPA without Ambition Scales}
+lm.cc1 <-  lmer(grade.numerical ~
+                 sex +
+                 agegroup +
+                 race.black +
+                 race.nativeamerican +
+                 race.mexican +
+                 race.puertorican +
+                 race.otherlatino +
+                 race.chinese +
+                 race.filipino +
+                 race.japanese +
+                 race.korean +
+                 race.southeastasian +
+                 race.otherasian +
+                 race.other +
+                 satscore +
+                 highschoolgpa +
+                 financialconcern +
+                 nativeenglish +
+                 politicalid +
+                 business +
+                 economics +
+                 lifesciences +
+                 sportssciences +
+                 physicalsciences +
+                 socialsciences +
+                 education +
+                 humanities +
+                 engineering +
+                 performingarts +
+                 music +
+                 finearts +
+                 schoolyear +
+                 (schoolyear|student) +
+                 (1|course),
+               FULL.d
+               )
+
+lm.cc1.out <- summary(lm.cc1)
+lm.cc1.anova <- anova(lm.cc1)
+lm.cc1.loglik <- -2*logLik(lm.cc1) 
+lm.cc1.AIC <- AIC(lm.cc1)
+lm.cc1.BIC <- BIC(lm.cc1)
+
+lm.cc1.out
+lm.cc1.anova
+lm.cc1.loglik 
+lm.cc1.AIC
+lm.cc1.BIC
+```
+
+```{r Cross-Classified Regression of Student and Course Variables on GPA with Ambition Scales}
+lm.cc2 <- lmer(grade.numerical ~
+                 sex +
+                 agegroup +
+                 race.black +
+                 race.nativeamerican +
+                 race.mexican +
+                 race.puertorican +
+                 race.otherlatino +
+                 race.chinese +
+                 race.filipino +
+                 race.japanese +
+                 race.korean +
+                 race.southeastasian +
+                 race.otherasian +
+                 race.other +
+                 satscore +
+                 highschoolgpa +
+                 financialconcern +
+                 nativeenglish +
+                 politicalid +
+                 business +
+                 economics +
+                 lifesciences +
+                 sportssciences +
+                 physicalsciences +
+                 socialsciences +
+                 education +
+                 humanities +
+                 engineering +
+                 performingarts +
+                 music +
+                 finearts +
+                 schoolyear +
+                 ambition.conventional +
+                 ambition.power +
+                 ambition.artistic +
+                 ambition.scientific +
+                 ambition.socialjustice +
+                  (schoolyear|student) + 
+                  (1|course),
+data = FULL.d
+               )
+
+lm.cc2.out <- summary(lm.cc2)
+lm.cc2.anova <- anova(lm.cc2)
+lm.cc2.loglik <- -2*logLik(lm.cc2) 
+lm.cc2.AIC <- AIC(lm.cc2)
+lm.cc2.BIC <- BIC(lm.cc2)
+
+lm.cc2.out
+lm.cc2.anova
+lm.cc2.loglik 
+lm.cc2.AIC
+lm.cc2.BIC
+```
